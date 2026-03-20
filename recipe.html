@@ -29,7 +29,8 @@
 
 
   <!-- Firebase Config -->
-   const firebaseConfig = {
+   <script>
+  const firebaseConfig = {
     apiKey: "AIzaSyD-ZVROybS5c3O6kJhe8LVcXNZ0KbYTmvg",
     authDomain: "recipes-83727.firebaseapp.com",
     projectId: "recipes-83727",
@@ -39,9 +40,10 @@
     measurementId: "G-4LERX7EWB7"
   };
 
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-  </script>
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
+
 
   <!-- Recipe Page Logic -->
   <script src="recipe.js" defer></script>
