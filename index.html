@@ -1,37 +1,45 @@
-<header id="header">
-  Recipes
-</header>
+<html>
+<head>
+  <title>My Recipes</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-<link rel="stylesheet" href="style.css">
-<input id="search" type="text" placeholder="Search for Recipes">
-<button id="search-btn">Search</button>
-<div class="search-bar">
-  
-</div>
+  <h1>My Recipes</h1>
 
-<ul id="recipe-list"></ul>
+  <!-- Search -->
+  <input type="text" id="search" placeholder="Search recipes...">
+  <button id="search-btn">Search</button>
 
-<h3>Add a New Recipe</h3>
+  <!-- Upload -->
+  <h3>Upload Recipe File</h3>
+  <input type="file" id="recipe-file">
+  <button id="upload-btn">Upload Recipe</button>
 
-<input id="recipe-file" type="file" accept=".txt,.md,.json,.pdf,.doc,.docx">
-<button id="upload-btn">Upload Recipe</button> 
+  <!-- Recipe List -->
+  <div id="recipe-list" class="card-grid"></div>
 
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD-ZVROybS5c3O6kJhe8LVcXNZ0KbYTmvg",
-  authDomain: "recipes-83727.firebaseapp.com",
-  projectId: "recipes-83727",
-  storageBucket: "recipes-83727.firebasestorage.app",
-  messagingSenderId: "97445031584",
-  appId: "1:97445031584:web:a463b119a272531f51a3c5",
-  measurementId: "G-4LERX7EWB7"
-};
+  <!-- Firebase Config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_KEY",
+      authDomain: "YOUR_APP.firebaseapp.com",
+      projectId: "YOUR_APP",
+      storageBucket: "YOUR_APP.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef"
+    };
 
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
 
+  <!-- App Logic -->
+  <script src="app.js" defer></script>
 
-<script src="app.js" defer></script>
-
+</body>
+</html>

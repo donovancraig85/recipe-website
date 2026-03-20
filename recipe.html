@@ -20,28 +20,30 @@
     <button id="pdf-btn">Save as PDF</button>
   </div>
 
-
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-
-
-const firebaseConfig = {
-  apiKey: "AIzaSyD-ZVROybS5c3O6kJhe8LVcXNZ0KbYTmvg",
-  authDomain: "recipes-83727.firebaseapp.com",
-  projectId: "recipes-83727",
-  storageBucket: "recipes-83727.firebasestorage.app",
-  messagingSenderId: "97445031584",
-  appId: "1:97445031584:web:a463b119a272531f51a3c5",
-  measurementId: "G-4LERX7EWB7"
-};
-
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
-
-
+  <!-- PDF Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-  <script src="recipe.js" defer></script>
-</body>
 
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js"></script>
+
+  <!-- Firebase Config -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_KEY",
+      authDomain: "YOUR_APP.firebaseapp.com",
+      projectId: "YOUR_APP",
+      storageBucket: "YOUR_APP.appspot.com",
+      messagingSenderId: "123456789",
+      appId: "1:123456789:web:abcdef"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+  </script>
+
+  <!-- Recipe Page Logic -->
+  <script src="recipe.js" defer></script>
+
+</body>
 </html>
