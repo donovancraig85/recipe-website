@@ -13,7 +13,6 @@ function loadRecipes() {
       ...doc.data()
     }));
 
-    // Safety: ensure name is always a string
     recipes = recipes.map(r => ({
       ...r,
       name: typeof r.name === "string" ? r.name : ""
@@ -25,7 +24,6 @@ function loadRecipes() {
   });
 }
 
-// Render recipe list
 function renderRecipes(list) {
   const container = document.getElementById("recipe-list");
   container.innerHTML = "";
@@ -36,18 +34,17 @@ function renderRecipes(list) {
 
     const link = document.createElement("a");
     link.textContent = recipe.name;
-    link.href = `recipe.html?id=${recipe.id}`;
+    link.href = `recipe.html?id=${encodeURIComponent(recipe.id)}`;
 
     card.appendChild(link);
     container.appendChild(card);
   });
 }
 
-// Initial load (ONLY ONCE)
 loadRecipes();
 
 // -----------------------------
-// FUZZY MATCHING HELPERS
+// FUZZY MATCHING
 // -----------------------------
 function levenshteinDistance(a, b) {
   const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
@@ -72,12 +69,11 @@ function fuzzyMatch(text, query) {
 
   if (text.includes(query)) return true;
 
-  const maxDistance = 2;
-  return levenshteinDistance(text, query) <= maxDistance;
+  return levenshteinDistance(text, query) <= 2;
 }
 
 // -----------------------------
-// SEARCH (NAME + TITLE LINE)
+// SEARCH → DIRECT NAVIGATION
 // -----------------------------
 const search = document.getElementById("search");
 const searchBtn = document.getElementById("search-btn");
@@ -86,29 +82,7 @@ function runSearch() {
   const query = search.value.toLowerCase();
 
   const filtered = recipes.filter(recipe => {
-    const name = typeof recipe.name === "string" ? recipe.name : "";
-
-    const titleLine =
-      Array.isArray(recipe.directions) && recipe.directions.length > 0
-        ? recipe.directions[0]
-        : "";
-
-    return fuzzyMatch(name, query) || fuzzyMatch(titleLine, query);
-  });
-
-  renderRecipes(filtered);
-}
-
-searchBtn.addEventListener("click", () => {
-  console.log("SEARCH BUTTON CLICKED!");
-  runSearch();
-});
-
-function runSearch() {
-  const query = search.value.toLowerCase();
-
-  const filtered = recipes.filter(recipe => {
-    const name = typeof recipe.name === "string" ? recipe.name : "";
+    const name = recipe.name || "";
     const titleLine =
       Array.isArray(recipe.directions) && recipe.directions.length > 0
         ? recipe.directions[0]
@@ -120,22 +94,68 @@ function runSearch() {
   console.log("SEARCH RUNNING. Query:", query);
   console.log("FILTERED RESULTS:", filtered);
 
-  // ⭐ If exactly one match → go straight to recipe card
   if (filtered.length === 1) {
     window.location.href = `recipe.html?id=${encodeURIComponent(filtered[0].id)}`;
     return;
   }
 
-  // ⭐ If multiple matches → show filtered list
-  
-
-  console.log("SEARCH RUNNING. Query:", query);
-  console.log("FILTERED RESULTS:", filtered);
-
   renderRecipes(filtered);
 }
+
+search.addEventListener("input", runSearch);
+searchBtn.addEventListener("click", () => {
+  console.log("SEARCH BUTTON CLICKED!");
+  runSearch();
+});
+
 // -----------------------------
-// UPLOAD (TEXT + PDF)
+// AUTO FORMATTER
+// -----------------------------
+function autoFormatRecipe(raw) {
+  let lines = raw
+    .split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+
+  if (lines.length === 0) return { title: "", ingredients: [], directions: [] };
+
+  const title = lines[0];
+
+  const ingredientKeywords = [
+    "cup", "tsp", "tbsp", "teaspoon", "tablespoon",
+    "oz", "ounce", "lb", "pound", "clove", "slice",
+    "gram", "kg", "ml", "liter", "pinch"
+  ];
+
+  const ingredients = [];
+  const directions = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i];
+
+    const looksLikeIngredient =
+      ingredientKeywords.some(k => line.toLowerCase().includes(k)) ||
+      /^[0-9]/.test(line) ||
+      line.includes(",");
+
+    if (looksLikeIngredient) {
+      ingredients.push("• " + line.replace(/^[-•]\s*/, ""));
+    } else {
+      directions.push(line);
+    }
+  }
+
+  const numberedDirections = directions.map((step, i) => `${i + 1}. ${step}`);
+
+  return {
+    title,
+    ingredients,
+    directions: numberedDirections
+  };
+}
+
+// -----------------------------
+// UPLOAD HANDLING
 // -----------------------------
 const fileInput = document.getElementById("recipe-file");
 const uploadbtn = document.getElementById("upload-btn");
@@ -170,7 +190,7 @@ uploadbtn.addEventListener("click", () => {
 });
 
 // -----------------------------
-// READ TEXT FILES
+// READ TEXT FILE
 // -----------------------------
 function readTextFile(file, name) {
   const reader = new FileReader();
@@ -183,7 +203,7 @@ function readTextFile(file, name) {
 }
 
 // -----------------------------
-// READ PDF FILES
+// READ PDF FILE
 // -----------------------------
 function readPDF(file, name) {
   const reader = new FileReader();
@@ -213,52 +233,23 @@ function readPDF(file, name) {
 }
 
 // -----------------------------
-// PROCESS RECIPE TEXT
+// PROCESS + SAVE FORMATTED RECIPE
 // -----------------------------
 function processRecipeText(text, name) {
-  const lines = text.split("\n")
-    .map(l => l.trim())
-    .filter(l => l.length > 0);
-
-  // Bullet-style ingredients (• or -)
-  const bulletIngredients = lines.filter(l =>
-    l.startsWith("•") || l.startsWith("-")
-  ).map(l =>
-    l.replace(/^•\s*|-/, "").trim()
-  );
-
-  // Comma-separated ingredients
-  const commaLine = lines.find(l => l.includes(","));
-  const commaIngredients = commaLine
-    ? commaLine.split(",").map(i => i.trim())
-    : [];
-
-  const ingredients = bulletIngredients.length > 0
-    ? bulletIngredients
-    : commaIngredients;
-
-  const directions = lines.filter(l =>
-    !l.startsWith("•") &&
-    !l.startsWith("-") &&
-    l !== commaLine
-  );
+  const formatted = autoFormatRecipe(text);
 
   const newRecipe = {
     name,
-    ingredients,
-    directions
+    ingredients: formatted.ingredients,
+    directions: [formatted.title, ...formatted.directions]
   };
 
-  // -----------------------------
-  // SAVE USING NAME AS DOCUMENT ID
-  // -----------------------------
   db.collection("recipes").doc(name).set(newRecipe)
     .then(() => {
       alert("Recipe uploaded successfully!");
       uploadName.value = "";
       fileInput.value = "";
 
-      // Add locally so search updates immediately
       recipes.push({ id: name, ...newRecipe });
       renderRecipes(recipes);
     })
