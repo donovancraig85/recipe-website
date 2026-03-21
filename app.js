@@ -122,7 +122,7 @@ function runSearch() {
 
   // ⭐ If exactly one match → go straight to recipe card
   if (filtered.length === 1) {
-    window.location.href = `recipe.html?id=${filtered[0].id}`;
+    window.location.href = `recipe.html?id=${encodeURIComponent(filtered[0].id)}`;
     return;
   }
 

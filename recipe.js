@@ -2,7 +2,8 @@
 // GET RECIPE ID FROM URL
 // -----------------------------
 const params = new URLSearchParams(window.location.search);
-const recipeId = params.get("id");
+const recipeId = decodeURIComponent(params.get("id"));
+
 
 if (!recipeId) {
   alert("No recipe ID provided.");
