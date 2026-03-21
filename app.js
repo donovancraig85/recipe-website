@@ -4,6 +4,22 @@
 let recipes = [];
 
 // -----------------------------
+// UNIVERSAL TEXT CLEANER
+// -----------------------------
+function cleanText(raw) {
+  return raw
+    .replace(/\r/g, "\n")                 // normalize line breaks
+    .replace(/<[^>]*>/g, "")              // remove HTML tags
+    .replace(/&nbsp;/g, " ")              // remove HTML spaces
+    .replace(/[•●▪■]/g, "")               // remove bullet symbols
+    .replace(/\t+/g, " ")                 // remove tabs
+    .replace(/[ ]{2,}/g, " ")             // collapse multiple spaces
+    .replace(/\n{2,}/g, "\n")             // collapse blank lines
+    .replace(/[^\S\r\n]+/g, " ")          // remove weird whitespace
+    .trim();
+}
+
+// -----------------------------
 // LOAD RECIPES FROM FIRESTORE
 // -----------------------------
 function loadRecipes() {
@@ -13,7 +29,6 @@ function loadRecipes() {
       ...doc.data()
     }));
 
-    // Ensure names are always strings
     recipes = recipes.map(r => ({
       ...r,
       name: typeof r.name === "string" ? r.name : ""
@@ -29,7 +44,6 @@ function renderRecipes(list) {
   const container = document.getElementById("recipe-list");
   container.innerHTML = "";
 
-  // Sort alphabetically
   list.sort((a, b) => a.name.localeCompare(b.name));
 
   list.forEach(recipe => {
@@ -102,18 +116,19 @@ search.addEventListener("input", runSearch);
 searchBtn.addEventListener("click", () => runSearch());
 
 // -----------------------------
-// UNIVERSAL AUTO FORMATTER
+// AUTO FORMAT RECIPE
 // -----------------------------
 function autoFormatRecipe(raw, name) {
+  raw = cleanText(raw);
+
   let lines = raw
-    .replace(/\r/g, "\n")
     .split("\n")
     .map(l => l.trim())
     .filter(l => l.length > 0)
     .map(l =>
       l
-        .replace(/^[-•*]\s*/, "")        // remove bullets
-        .replace(/^\d+[\.\-\)\:]\s*/, "") // remove numbering
+        .replace(/^[-•*]\s*/, "")
+        .replace(/^\d+[\.\-\)\:]\s*/, "")
     );
 
   if (lines.length === 0) {
