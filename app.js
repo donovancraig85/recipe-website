@@ -105,10 +105,11 @@ searchBtn.addEventListener("click", () => {
 });
 
 // -----------------------------
-// AUTO FORMATTER (RELIABLE VERSION)
+// AUTO FORMATTER (SECTION-BASED)
 // -----------------------------
 function autoFormatRecipe(raw, name) {
   let lines = raw
+    .replace(/\r/g, "\n")
     .split("\n")
     .map(l => l.trim())
     .filter(l => l.length > 0);
@@ -117,44 +118,54 @@ function autoFormatRecipe(raw, name) {
     return { title: name, ingredients: [], directions: [] };
   }
 
+  // Try to find section indices by label (anywhere in line)
+  let ingredientsStart = -1;
+  let directionsStart = -1;
+
+  lines.forEach((line, idx) => {
+    const lower = line.toLowerCase();
+    if (ingredientsStart === -1 && lower.includes("ingredients")) {
+      ingredientsStart = idx;
+    }
+    if (
+      directionsStart === -1 &&
+      (lower.includes("instructions") ||
+       lower.includes("directions") ||
+       lower.includes("method"))
+    ) {
+      directionsStart = idx;
+    }
+  });
+
   let ingredients = [];
   let directions = [];
 
-  let inIngredients = false;
-  let inDirections = false;
+  if (ingredientsStart !== -1) {
+    const ingFrom = ingredientsStart + 1;
+    const ingTo = directionsStart !== -1 ? directionsStart : lines.length;
 
-  for (let line of lines) {
-    const lower = line.toLowerCase();
-
-    if (lower.startsWith("ingredients")) {
-      inIngredients = true;
-      inDirections = false;
-      continue;
-    }
-
-    if (lower.startsWith("directions") || lower.startsWith("instructions") || lower.startsWith("method")) {
-      inIngredients = false;
-      inDirections = true;
-      continue;
-    }
-
-    if (inIngredients) {
+    for (let i = ingFrom; i < ingTo; i++) {
+      const line = lines[i];
+      if (!line) continue;
       ingredients.push("• " + line.replace(/^[-•]\s*/, ""));
-      continue;
-    }
-
-    if (inDirections) {
-      directions.push(line);
-      continue;
     }
   }
 
-  // If no explicit sections found → fallback
+  if (directionsStart !== -1) {
+    const dirFrom = directionsStart + 1;
+    for (let i = dirFrom; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line) continue;
+      directions.push(line.replace(/^\d+[\).\s]+/, "")); // strip leading "1. "
+    }
+  }
+
+  // Fallback if sections not found or empty
   if (ingredients.length === 0 && directions.length === 0) {
     const ingredientKeywords = [
       "cup", "tsp", "tbsp", "teaspoon", "tablespoon",
       "oz", "ounce", "lb", "pound", "clove", "slice",
-      "gram", "kg", "ml", "liter", "pinch"
+      "gram", "kg", "ml", "liter", "pinch", "g)"
     ];
 
     for (let line of lines) {
@@ -268,7 +279,8 @@ function processRecipeText(text, name) {
   const newRecipe = {
     name,
     ingredients: formatted.ingredients,
-    directions: [formatted.title, ...formatted.directions]
+    // IMPORTANT: do NOT inject title into directions anymore
+    directions: formatted.directions
   };
 
   db.collection("recipes").doc(name).set(newRecipe)
