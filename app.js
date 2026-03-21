@@ -91,9 +91,6 @@ function runSearch() {
     return fuzzyMatch(name, query) || fuzzyMatch(titleLine, query);
   });
 
-  console.log("SEARCH RUNNING. Query:", query);
-  console.log("FILTERED RESULTS:", filtered);
-
   if (filtered.length === 1) {
     window.location.href = `recipe.html?id=${encodeURIComponent(filtered[0].id)}`;
     return;
@@ -104,51 +101,81 @@ function runSearch() {
 
 search.addEventListener("input", runSearch);
 searchBtn.addEventListener("click", () => {
-  console.log("SEARCH BUTTON CLICKED!");
   runSearch();
 });
 
 // -----------------------------
-// AUTO FORMATTER
+// AUTO FORMATTER (RELIABLE VERSION)
 // -----------------------------
-function autoFormatRecipe(raw) {
+function autoFormatRecipe(raw, name) {
   let lines = raw
     .split("\n")
     .map(l => l.trim())
     .filter(l => l.length > 0);
 
-  if (lines.length === 0) return { title: "", ingredients: [], directions: [] };
+  if (lines.length === 0) {
+    return { title: name, ingredients: [], directions: [] };
+  }
 
-  const title = lines[0];
+  let ingredients = [];
+  let directions = [];
 
-  const ingredientKeywords = [
-    "cup", "tsp", "tbsp", "teaspoon", "tablespoon",
-    "oz", "ounce", "lb", "pound", "clove", "slice",
-    "gram", "kg", "ml", "liter", "pinch"
-  ];
+  let inIngredients = false;
+  let inDirections = false;
 
-  const ingredients = [];
-  const directions = [];
+  for (let line of lines) {
+    const lower = line.toLowerCase();
 
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i];
+    if (lower.startsWith("ingredients")) {
+      inIngredients = true;
+      inDirections = false;
+      continue;
+    }
 
-    const looksLikeIngredient =
-      ingredientKeywords.some(k => line.toLowerCase().includes(k)) ||
-      /^[0-9]/.test(line) ||
-      line.includes(",");
+    if (lower.startsWith("directions") || lower.startsWith("instructions") || lower.startsWith("method")) {
+      inIngredients = false;
+      inDirections = true;
+      continue;
+    }
 
-    if (looksLikeIngredient) {
+    if (inIngredients) {
       ingredients.push("• " + line.replace(/^[-•]\s*/, ""));
-    } else {
+      continue;
+    }
+
+    if (inDirections) {
       directions.push(line);
+      continue;
+    }
+  }
+
+  // If no explicit sections found → fallback
+  if (ingredients.length === 0 && directions.length === 0) {
+    const ingredientKeywords = [
+      "cup", "tsp", "tbsp", "teaspoon", "tablespoon",
+      "oz", "ounce", "lb", "pound", "clove", "slice",
+      "gram", "kg", "ml", "liter", "pinch"
+    ];
+
+    for (let line of lines) {
+      const lower = line.toLowerCase();
+      const looksLikeIngredient =
+        ingredientKeywords.some(k => lower.includes(k)) ||
+        /^[0-9]/.test(line) ||
+        line.includes(",");
+
+      if (looksLikeIngredient) {
+        ingredients.push("• " + line.replace(/^[-•]\s*/, ""));
+      } else {
+        directions.push(line);
+      }
     }
   }
 
   const numberedDirections = directions.map((step, i) => `${i + 1}. ${step}`);
 
   return {
-    title,
+    title: name,
     ingredients,
     directions: numberedDirections
   };
@@ -219,7 +246,7 @@ function readPDF(file, name) {
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
         const strings = content.items.map(item => item.str);
-        fullText += strings.join(" ") + "\n";
+        fullText += strings.join("\n") + "\n";
       }
 
       processRecipeText(fullText, name);
@@ -236,7 +263,7 @@ function readPDF(file, name) {
 // PROCESS + SAVE FORMATTED RECIPE
 // -----------------------------
 function processRecipeText(text, name) {
-  const formatted = autoFormatRecipe(text);
+  const formatted = autoFormatRecipe(text, name);
 
   const newRecipe = {
     name,
