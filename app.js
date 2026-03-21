@@ -8,14 +8,14 @@ let recipes = [];
 // -----------------------------
 function cleanText(raw) {
   return raw
-    .replace(/\r/g, "\n")                 // normalize line breaks
-    .replace(/<[^>]*>/g, "")              // remove HTML tags
-    .replace(/&nbsp;/g, " ")              // remove HTML spaces
-    .replace(/[•●▪■]/g, "")               // remove bullet symbols
-    .replace(/\t+/g, " ")                 // remove tabs
-    .replace(/[ ]{2,}/g, " ")             // collapse multiple spaces
-    .replace(/\n{2,}/g, "\n")             // collapse blank lines
-    .replace(/[^\S\r\n]+/g, " ")          // remove weird whitespace
+    .replace(/\r/g, "\n")
+    .replace(/<[^>]*>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/[•●▪■]/g, "")
+    .replace(/\t+/g, " ")
+    .replace(/[ ]{2,}/g, " ")
+    .replace(/\n{2,}/g, "\n")
+    .replace(/[^\S\r\n]+/g, " ")
     .trim();
 }
 
@@ -54,6 +54,14 @@ function renderRecipes(list) {
     link.textContent = recipe.name;
     link.href = `recipe.html?id=${encodeURIComponent(recipe.id)}`;
 
+    // Optional: show tags under each recipe
+    if (recipe.tags && recipe.tags.length > 0) {
+      const tagDiv = document.createElement("div");
+      tagDiv.className = "tag-preview";
+      tagDiv.textContent = recipe.tags.join(", ");
+      card.appendChild(tagDiv);
+    }
+
     card.appendChild(link);
     container.appendChild(card);
   });
@@ -62,7 +70,7 @@ function renderRecipes(list) {
 loadRecipes();
 
 // -----------------------------
-// FUZZY MATCHING
+// FUZZY MATCHING (NAME ONLY)
 // -----------------------------
 function levenshteinDistance(a, b) {
   const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
@@ -91,7 +99,7 @@ function fuzzyMatch(text, query) {
 }
 
 // -----------------------------
-// SEARCH + LIVE DROPDOWN
+// SEARCH + LIVE DROPDOWN (NAME ONLY)
 // -----------------------------
 const search = document.getElementById("search");
 const searchBtn = document.getElementById("search-btn");
@@ -100,12 +108,23 @@ const searchResults = document.getElementById("search-results");
 function updateSearchDropdown(list) {
   searchResults.innerHTML = "";
 
-  if (list.length === 0) {
+  const query = search.value.toLowerCase().trim();
+  if (!query) {
     searchResults.style.display = "none";
     return;
   }
 
-  list.slice(0, 8).forEach(recipe => {
+  // Only show suggestions if NAME matches
+  const nameMatches = list.filter(r =>
+    r.name.toLowerCase().includes(query)
+  );
+
+  if (nameMatches.length === 0) {
+    searchResults.style.display = "none";
+    return;
+  }
+
+  nameMatches.slice(0, 8).forEach(recipe => {
     const item = document.createElement("div");
     item.textContent = recipe.name;
     item.addEventListener("click", () => {
@@ -126,17 +145,10 @@ function runSearch() {
     return;
   }
 
-  const filtered = recipes.filter(recipe => {
-    const name = recipe.name || "";
-    const ingredients = (recipe.ingredients || []).join(" ").toLowerCase();
-    const directions = (recipe.directions || []).join(" ").toLowerCase();
-
-    return (
-      fuzzyMatch(name, query) ||
-      ingredients.includes(query) ||
-      directions.includes(query)
-    );
-  });
+  // Search ONLY by name
+  const filtered = recipes.filter(recipe =>
+    fuzzyMatch(recipe.name || "", query)
+  );
 
   renderRecipes(filtered);
   updateSearchDropdown(filtered);
@@ -201,6 +213,7 @@ function autoFormatRecipe(raw, name) {
     }
   }
 
+  // Fallback: auto-detect
   if (ingredients.length === 0 && directions.length === 0) {
     const ingredientKeywords = [
       "cup", "tsp", "tbsp", "teaspoon", "tablespoon",
@@ -236,6 +249,7 @@ function autoFormatRecipe(raw, name) {
 const fileInput = document.getElementById("recipe-file");
 const uploadbtn = document.getElementById("upload-btn");
 const uploadName = document.getElementById("upload-name");
+const uploadTags = document.getElementById("upload-tags");
 
 uploadbtn.addEventListener("click", () => {
   const file = fileInput.files[0];
@@ -326,8 +340,14 @@ function readImageOCR(file, name) {
 function processRecipeText(text, name) {
   const formatted = autoFormatRecipe(text, name);
 
+  const tags = uploadTags.value
+    .split(",")
+    .map(t => t.trim().toLowerCase())
+    .filter(t => t.length > 0);
+
   const newRecipe = {
     name,
+    tags,
     ingredients: formatted.ingredients,
     directions: formatted.directions
   };
@@ -336,6 +356,7 @@ function processRecipeText(text, name) {
     .then(docRef => {
       alert("Recipe uploaded successfully!");
       uploadName.value = "";
+      uploadTags.value = "";
       fileInput.value = "";
 
       recipes.push({ id: docRef.id, ...newRecipe });
