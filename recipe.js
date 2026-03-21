@@ -1,34 +1,43 @@
-// Assumes firebase app + db are already initialized in recipe.html
-
+/// -----------------------------
+// GET RECIPE ID FROM URL
+// -----------------------------
 const params = new URLSearchParams(window.location.search);
-const id = params.get("id"); // Firestore doc id (string)
+const recipeId = params.get("id");
 
-let currentRecipe = null;
+if (!recipeId) {
+  alert("No recipe ID provided.");
+  window.location.href = "index.html";
+}
 
-// Load single recipe from Firestore
-db.collection("recipes").doc(id).get()
+// -----------------------------
+// LOAD RECIPE FROM FIRESTORE
+// -----------------------------
+db.collection("recipes").doc(recipeId).get()
   .then(doc => {
     if (!doc.exists) {
-      document.getElementById("recipe-name").textContent = "Recipe not found";
+      alert("Recipe not found.");
+      window.location.href = "index.html";
       return;
     }
 
     const recipe = doc.data();
-    currentRecipe = recipe;
 
+    // Fill name
     document.getElementById("recipe-name").textContent = recipe.name;
 
-    // Ingredients
-    const ul = document.getElementById("ingredient-list");
-    (recipe.ingredients || []).forEach(i => {
+    // Fill ingredients
+    const ingredientList = document.getElementById("ingredient-list");
+    ingredientList.innerHTML = "";
+    recipe.ingredients.forEach(item => {
       const li = document.createElement("li");
-      li.textContent = i;
-      ul.appendChild(li);
+      li.textContent = item;
+      ingredientList.appendChild(li);
     });
 
-    // Directions
+    // Fill directions
     const directionsList = document.getElementById("directions-list");
-    (recipe.directions || []).forEach(step => {
+    directionsList.innerHTML = "";
+    recipe.directions.forEach(step => {
       const li = document.createElement("li");
       li.textContent = step;
       directionsList.appendChild(li);
@@ -38,41 +47,27 @@ db.collection("recipes").doc(id).get()
     console.error("Error loading recipe:", err);
   });
 
-// PDF button
-const pdfBtn = document.getElementById("pdf-btn");
+// -----------------------------
+// DELETE RECIPE
+// -----------------------------
+document.getElementById("delete-btn").addEventListener("click", () => {
+  if (!confirm("Are you sure you want to delete this recipe?")) return;
 
-pdfBtn.addEventListener("click", () => {
-  if (!currentRecipe) return;
-
-  const recipeCard = document.querySelector(".recipe-card") || document.body;
-
-  const options = {
-    margin: 10,
-    filename: `${currentRecipe.name}.pdf`,
-    image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2 },
-    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
-  };
-
-  html2pdf().set(options).from(recipeCard).save();
-});
-
-// Delete button
-const deleteBtn = document.getElementById("delete-btn");
-
-deleteBtn.addEventListener("click", () => {
-  if (!currentRecipe) return;
-
-  const confirmed = confirm(`Delete "${currentRecipe.name}"?`);
-
-  if (!confirmed) return;
-
-  db.collection("recipes").doc(id).delete()
+  db.collection("recipes").doc(recipeId).delete()
     .then(() => {
+      alert("Recipe deleted.");
       window.location.href = "index.html";
     })
     .catch(err => {
       console.error("Error deleting recipe:", err);
-      alert("Error deleting recipe. Check console for details.");
     });
 });
+
+// -----------------------------
+// SAVE AS PDF
+// -----------------------------
+document.getElementById("pdf-btn").addEventListener("click", () => {
+  const element = document.querySelector(".recipe-card");
+  html2pdf().from(element).save(`${recipeId}.pdf`);
+});
+
