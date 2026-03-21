@@ -1,52 +1,114 @@
+<!DOCTYPE html>
 <html>
 <head>
   <title>Recipe</title>
   <link rel="stylesheet" href="style.css">
-</head>
-<body>
 
-  <a href="index.html">← Back to Recipes</a>
-
-  <div class="recipe-card">
-    <h1 id="recipe-name"></h1>
-
-    <h3>Ingredients</h3>
-    <ul id="ingredient-list"></ul>
-
-    <h3>Directions</h3>
-    <ol id="directions-list"></ol>
-
-    <button id="delete-btn" class="delete-btn">Delete Recipe</button>
-    <button id="pdf-btn">Save as PDF</button>
-  </div>
-
-  <!-- PDF Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-
-  <!-- Firebase SDKs -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 700px;
+      margin: auto;
+    }
 
-  <!-- Firebase Config -->
-   <script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyD-ZVROybS5c3O6kJhe8LVcXNZ0KbYTmvg",
-    authDomain: "recipes-83727.firebaseapp.com",
-    projectId: "recipes-83727",
-    storageBucket: "recipes-83727.appspot.com",
-    messagingSenderId: "97445031584",
-    appId: "1:97445031584:web:a463b119a272531f51a3c5",
-    measurementId: "G-4LERX7EWB7"
-  };
+    h1 {
+      margin-bottom: 10px;
+    }
 
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-</script>
+    h2 {
+      margin-top: 25px;
+      border-bottom: 1px solid #ccc;
+      padding-bottom: 5px;
+    }
 
+    ul {
+      padding-left: 20px;
+    }
 
-  <!-- Recipe Page Logic -->
-  <script src="recipe.js" defer></script>
+    a.back-link {
+      display: inline-block;
+      margin-bottom: 20px;
+      text-decoration: none;
+      color: #0077cc;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <a href="index.html" class="back-link">← Back to Recipes</a>
+
+  <h1 id="recipe-title">Loading...</h1>
+
+  <h2>Ingredients</h2>
+  <ul id="ingredients-list"></ul>
+
+  <h2>Directions</h2>
+  <ol id="directions-list"></ol>
+
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyD-ZVROybS5c3O6kJhe8LVcXNZ0KbYTmvg",
+      authDomain: "recipes-83727.firebaseapp.com",
+      projectId: "recipes-83727",
+      storageBucket: "recipes-83727.appspot.com",
+      messagingSenderId: "97445031584",
+      appId: "1:97445031584:web:a463b119a272531f51a3c5",
+      measurementId: "G-4LERX7EWB7"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // Get recipe ID from URL
+    const params = new URLSearchParams(window.location.search);
+    const recipeId = params.get("id");
+
+    if (!recipeId) {
+      document.getElementById("recipe-title").textContent = "Recipe not found.";
+    } else {
+      db.collection("recipes").doc(recipeId).get().then(doc => {
+        if (!doc.exists) {
+          document.getElementById("recipe-title").textContent = "Recipe not found.";
+          return;
+        }
+
+        const data = doc.data();
+
+        // Title
+        document.getElementById("recipe-title").textContent = data.name || "Untitled Recipe";
+
+        // Ingredients
+        const ingList = document.getElementById("ingredients-list");
+        ingList.innerHTML = "";
+        (data.ingredients || []).forEach(item => {
+          const li = document.createElement("li");
+          li.textContent = item;
+          ingList.appendChild(li);
+        });
+
+        // Directions
+        const dirList = document.getElementById("directions-list");
+        dirList.innerHTML = "";
+        (data.directions || []).forEach(step => {
+          const li = document.createElement("li");
+          li.textContent = step;
+          dirList.appendChild(li);
+        });
+
+      }).catch(err => {
+        console.error("Error loading recipe:", err);
+        document.getElementById("recipe-title").textContent = "Error loading recipe.";
+      });
+    }
+  </script>
 
 </body>
 </html>

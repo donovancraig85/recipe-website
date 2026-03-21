@@ -13,6 +13,7 @@ function loadRecipes() {
       ...doc.data()
     }));
 
+    // Ensure names are always strings
     recipes = recipes.map(r => ({
       ...r,
       name: typeof r.name === "string" ? r.name : ""
@@ -27,6 +28,9 @@ function loadRecipes() {
 function renderRecipes(list) {
   const container = document.getElementById("recipe-list");
   container.innerHTML = "";
+
+  // Sort alphabetically
+  list.sort((a, b) => a.name.localeCompare(b.name));
 
   list.forEach(recipe => {
     const card = document.createElement("div");
@@ -283,13 +287,13 @@ function processRecipeText(text, name) {
     directions: formatted.directions
   };
 
-  db.collection("recipes").doc(name).set(newRecipe)
-    .then(() => {
+  db.collection("recipes").add(newRecipe)
+    .then(docRef => {
       alert("Recipe uploaded successfully!");
       uploadName.value = "";
       fileInput.value = "";
 
-      recipes.push({ id: name, ...newRecipe });
+      recipes.push({ id: docRef.id, ...newRecipe });
       renderRecipes(recipes);
     })
     .catch(err => {
