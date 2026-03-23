@@ -179,6 +179,9 @@ function autoFormatRecipe(raw, name) {
   for (let line of lines) {
     const lower = line.toLowerCase();
 
+    // ------------------------------------
+    // METADATA
+    // ------------------------------------
     if (lower.startsWith("yields") || lower.startsWith("yield")) {
       const match = lower.match(/(\d+)\s*serv/);
       if (match) servings = match[1];
@@ -203,33 +206,46 @@ function autoFormatRecipe(raw, name) {
       if (match) totalTime = match[1].trim();
       continue;
     }
-// ------------------------------------
-// SECTION HEADERS
-// ------------------------------------
-if (lower === "ingredients") {
-  mode = "ingredients";
-  continue;
-}
 
-if (lower === "directions") {
-  mode = "directions";
-  continue;
-}
+    // ------------------------------------
+    // SECTION HEADERS (flexible)
+    // ------------------------------------
+    if (lower.startsWith("ingredients")) {
+      mode = "ingredients";
+      continue;
+    }
 
-// Numbered lines = directions ONLY if not in ingredients mode
-if (/^\d/.test(line) && mode !== "ingredients") {
-  mode = "directions";
-  directions.push(line);
-  continue;
-}
+    if (lower.startsWith("directions") || lower.startsWith("instructions")) {
+      mode = "directions";
+      continue;
+    }
 
-if (mode === "ingredients") {
-  ingredients.push(line);
-  continue;
-}
+    // ------------------------------------
+    // NUMBERED LINES
+    // ------------------------------------
+    // Only treat numbered lines as directions AFTER directions header
+    if (/^\d/.test(line) && mode === "directions") {
+      directions.push(line);
+      continue;
+    }
 
-narrative.push(line);
+    // ------------------------------------
+    // INGREDIENTS
+    // ------------------------------------
+    if (mode === "ingredients") {
+      ingredients.push(line);
+      continue;
+    }
 
+    // ------------------------------------
+    // DEFAULT → NARRATIVE
+    // ------------------------------------
+    narrative.push(line);
+  }
+
+  // ------------------------------------
+  // FINAL STRUCTURED OUTPUT
+  // ------------------------------------
   return {
     narrative,
     ingredients,
