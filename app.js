@@ -242,33 +242,6 @@ function autoFormatRecipe(raw, name) {
   };
 }
 
-
-  // -----------------------------
-  // SECTION DETECTION
-  // -----------------------------
-  function detectSection(line) {
-  const cleaned = line
-    .toLowerCase()
-    .trim();
-
-  // Only match EXACT headers
-  const headers = [
-    "narrative",
-    "ingredients",
-    "directions",
-    "notes",
-    "tips",
-    "misc"
-  ];
-
-  // If the line is EXACTLY a header, return it
-  if (headers.includes(cleaned.replace(":", ""))) {
-    return cleaned.replace(":", "");
-  }
-
-  return null;
-}
-
   // -----------------------------
   // SECTION BUCKETS
   // -----------------------------
