@@ -32,6 +32,21 @@ a {
   color: #222;
 }
 
+#narrative {
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+.recipe-card h3 {
+  margin-top: 28px;
+  margin-bottom: 8px;
+}
+
+#ingredient-list,
+#directions-list {
+  margin-bottom: 24px;
+}
+
 /* Section headers */
 h3 {
   margin-top: 25px;
@@ -60,7 +75,7 @@ button {
 
 /* Delete button */
 #delete-btn {
-  background: #d9534f;
+  background: ##FF0000;
   color: white;
 }
 

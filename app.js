@@ -172,12 +172,6 @@ function autoFormatRecipe(raw, name) {
     .map(l => l.trim())
     .filter(l => l.length > 0);
 
-console.log("DEBUG RAW LINES START");
-lines.forEach((l, i) => {
-  console.log(i + ":", JSON.stringify(l));
-});
-console.log("DEBUG RAW LINES END");
-
   let narrative = [];
   let ingredients = [];
   let directions = [];
@@ -268,7 +262,6 @@ console.log("FINAL PARSED:");
 console.log("NARRATIVE:", narrative);
 console.log("INGREDIENTS:", ingredients);
 console.log("DIRECTIONS:", directions);
-
 
   return {
     narrative,
