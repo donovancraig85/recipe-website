@@ -188,6 +188,7 @@ function autoFormatRecipe(raw, name) {
     const header = detectHeader(line);
 
     // SECTION HEADERS FIRST
+const header = detectHeader(line);
 if (header === "ingredients") {
   mode = "ingredients";
   continue;
@@ -199,40 +200,47 @@ if (header === "directions" || header === "instructions" || header === "method")
 }
 
 // METADATA SECOND
-if (lower.startsWith("yields") || lower.startsWith("yield")) { ... }
-if (lower.startsWith("prep")) { ... }
-if (lower.startsWith("cook")) { ... }
-if (lower.startsWith("total")) { ... }
-
-
-    // NUMBERED LINES
-    if (/^\d+[\).]?\s/.test(line)) {
-      if (mode === "directions") directions.push(line);
-      else if (mode === "ingredients") ingredients.push(line);
-      else narrative.push(line);
-      continue;
-    }
-
-    // INGREDIENT LINES
-    if (mode === "ingredients") {
-      ingredients.push(line);
-      continue;
-    }
-
-    // DEFAULT → NARRATIVE
-    narrative.push(line);
-  }
-
-  return {
-    narrative,
-    ingredients,
-    directions,
-    servings,
-    prepTime,
-    cookTime,
-    totalTime
-  };
+if (lower.startsWith("yields") || lower.startsWith("yield")) {
+  const match = lower.match(/(\d+)\s*serv/);
+  if (match) servings = match[1];
+  continue;
 }
+
+if (lower.startsWith("prep")) {
+  const match = line.match(/prep[^0-9]*([\d\s\w]+)/i);
+  if (match) prepTime = match[1].trim();
+  continue;
+}
+
+if (lower.startsWith("cook")) {
+  const match = line.match(/cook[^0-9]*([\d\s\w]+)/i);
+  if (match) cookTime = match[1].trim();
+  continue;
+}
+
+if (lower.startsWith("total")) {
+  const match = line.match(/total[^0-9]*([\d\s\w]+)/i);
+  if (match) totalTime = match[1].trim();
+  continue;
+}
+
+// NUMBERED LINES
+if (/^\d+[\).]?\s/.test(line)) {
+  if (mode === "directions") directions.push(line);
+  else if (mode === "ingredients") ingredients.push(line);
+  else narrative.push(line);
+  continue;
+}
+
+// INGREDIENT LINES
+if (mode === "ingredients") {
+  ingredients.push(line);
+  continue;
+}
+
+// DEFAULT → NARRATIVE
+narrative.push(line);
+
 
 // -----------------------------
 // NORMALIZATION HELPERS
