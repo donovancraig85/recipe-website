@@ -336,9 +336,6 @@ function processRecipeText(text, name) {
   narrative: formatted.narrative,
   ingredients: formatted.ingredients,
   directions: formatted.directions,
-  notes: formatted.notes,
-  tips: formatted.tips,
-  misc: formatted.misc,
 
   // NEW metadata fields
   servings: formatted.servings,
@@ -354,7 +351,7 @@ function processRecipeText(text, name) {
       uploadCategory.value = "";
       fileInput.value = "";
 
-      recipes.push({ id: docRef.id, ...newRecipe });
+      recipes.push({ id: docRef.id, ...newRecipe });FaddD
       renderRecipes(recipes);
     })
     .catch(err => {
