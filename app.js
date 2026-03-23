@@ -174,18 +174,19 @@ function autoFormatRecipe(raw, name) {
   let cookTime = null;
   let totalTime = null;
 
+  // Modes: narrative → ingredients → directions
   let mode = "narrative";
 
   for (let line of lines) {
     const lower = line.toLowerCase();
 
-    // -----------------------------
+    // ------------------------------------
     // METADATA DETECTION
-    // -----------------------------
+    // ------------------------------------
     if (lower.startsWith("yields") || lower.startsWith("yield")) {
       const match = lower.match(/(\d+)\s*serv/);
       if (match) servings = match[1];
-      mode = "ingredients";
+      mode = "ingredients"; // metadata ends → ingredients begin
       continue;
     }
 
@@ -207,26 +208,26 @@ function autoFormatRecipe(raw, name) {
       continue;
     }
 
-    // -----------------------------
+    // ------------------------------------
     // DIRECTIONS DETECTION
-    // -----------------------------
+    // ------------------------------------
     if (/^\d/.test(line)) {
       mode = "directions";
       directions.push(line);
       continue;
     }
 
-    // -----------------------------
+    // ------------------------------------
     // INGREDIENTS DETECTION
-    // -----------------------------
+    // ------------------------------------
     if (mode === "ingredients") {
       ingredients.push(line);
       continue;
     }
 
-    // -----------------------------
+    // ------------------------------------
     // DEFAULT: NARRATIVE
-    // -----------------------------
+    // ------------------------------------
     narrative.push(line);
   }
 
