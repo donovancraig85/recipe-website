@@ -162,9 +162,9 @@ function autoFormatRecipe(raw, name) {
 
   // Normalize weird unicode, bullets, dashes, etc.
   raw = raw
-    .replace(/\u00A0/g, " ")      // non-breaking spaces
-    .replace(/\u2013|\u2014/g, "-") // en/em dashes
-    .replace(/\u2022/g, "-")      // bullet •
+    .replace(/\u00A0/g, " ")
+    .replace(/\u2013|\u2014/g, "-")
+    .replace(/\u2022/g, "-")
     .replace(/\r/g, "");
 
   let lines = raw
@@ -184,7 +184,6 @@ function autoFormatRecipe(raw, name) {
   let mode = "narrative";
   let seenIngredients = false;
 
-  // Helper: normalize header text
   const normalizeHeader = (txt) =>
     txt.toLowerCase().replace(/[^a-z]/g, "");
 
@@ -192,9 +191,7 @@ function autoFormatRecipe(raw, name) {
     const lower = line.toLowerCase();
     const header = normalizeHeader(line);
 
-    // ------------------------------------
     // METADATA
-    // ------------------------------------
     if (lower.startsWith("yields") || lower.startsWith("yield")) {
       const match = lower.match(/(\d+)\s*serv/);
       if (match) servings = match[1];
@@ -221,9 +218,7 @@ function autoFormatRecipe(raw, name) {
       continue;
     }
 
-    // ------------------------------------
     // SECTION HEADERS
-    // ------------------------------------
     if (header === "ingredients") {
       mode = "ingredients";
       seenIngredients = true;
@@ -235,43 +230,28 @@ function autoFormatRecipe(raw, name) {
       continue;
     }
 
-    // ------------------------------------
-    // AUTO-SWITCH FROM INGREDIENTS → DIRECTIONS
-    // ------------------------------------
-    // If we have seen ingredients and now see a numbered line,
-    // assume directions have started even without a header.
-    if (/^\d+[\).]?\s/.test(line) && seenIngredients && mode !== "directions") {
-      mode = "directions";
-      directions.push(line);
+    // NUMBERED LINES
+    if (/^\d+[\).]?\s/.test(line)) {
+      if (mode === "directions") {
+        directions.push(line);
+      } else if (mode === "ingredients") {
+        ingredients.push(line);
+      } else {
+        narrative.push(line);
+      }
       continue;
     }
 
-    // ------------------------------------
-    // NUMBERED LINES (directions)
-    // ------------------------------------
-    if (/^\d+[\).]?\s/.test(line) && mode === "directions") {
-      directions.push(line);
-      continue;
-    }
-
-    // ------------------------------------
     // INGREDIENT LINES
-    // ------------------------------------
-    // Ingredient patterns: quantity + unit + item
     if (mode === "ingredients") {
       ingredients.push(line);
       continue;
     }
 
-    // ------------------------------------
     // DEFAULT → NARRATIVE
-    // ------------------------------------
     narrative.push(line);
   }
 
-  // ------------------------------------
-  // FINAL STRUCTURED OUTPUT
-  // ------------------------------------
   return {
     narrative,
     ingredients,
@@ -282,8 +262,6 @@ function autoFormatRecipe(raw, name) {
     totalTime
   };
 }
-
-
 // -----------------------------
 // FILE UPLOAD HANDLER
 // -----------------------------
@@ -417,6 +395,7 @@ function processRecipeText(text, name) {
 
 // -----------------------------
 // CATEGORY SIDEBAR FILTERING
+
 // -----------------------------
 function enableCategoryFiltering() {
   const items = document.querySelectorAll("#category-list li");
