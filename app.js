@@ -264,6 +264,12 @@ console.log("DEBUG RAW LINES END");
     narrative.push(line);
   }
 
+console.log("FINAL PARSED:");
+console.log("NARRATIVE:", narrative);
+console.log("INGREDIENTS:", ingredients);
+console.log("DIRECTIONS:", directions);
+
+
   return {
     narrative,
     ingredients,
