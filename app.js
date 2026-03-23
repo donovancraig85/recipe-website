@@ -42,6 +42,8 @@ function loadRecipes() {
 
 function renderRecipes(list) {
   const container = document.getElementById("recipe-list");
+  if (!container) return;
+
   container.innerHTML = "";
 
   list.sort((a, b) => a.name.localeCompare(b.name));
@@ -105,6 +107,8 @@ const searchBtn = document.getElementById("search-btn");
 const searchResults = document.getElementById("search-results");
 
 function updateSearchDropdown(list) {
+  if (!searchResults) return;
+
   searchResults.innerHTML = "";
 
   const query = search.value.toLowerCase().trim();
@@ -151,11 +155,13 @@ function runSearch() {
   updateSearchDropdown(filtered);
 }
 
-search.addEventListener("input", runSearch);
-searchBtn.addEventListener("click", () => runSearch());
+if (search) {
+  search.addEventListener("input", runSearch);
+  searchBtn?.addEventListener("click", () => runSearch());
+}
 
 // -----------------------------
-// AUTO FORMATTER
+// BULLETPROOF PARSER
 // -----------------------------
 function autoFormatRecipe(raw, name) {
   raw = cleanText(raw);
@@ -287,25 +293,27 @@ const uploadbtn = document.getElementById("upload-btn");
 const uploadName = document.getElementById("upload-name");
 const uploadCategory = document.getElementById("upload-category");
 
-uploadbtn.addEventListener("click", () => {
-  const file = fileInput.files[0];
-  const name = uploadName.value.trim();
-  const category = uploadCategory.value.trim();
+if (uploadbtn) {
+  uploadbtn.addEventListener("click", () => {
+    const file = fileInput.files[0];
+    const name = uploadName.value.trim();
+    const category = uploadCategory.value.trim();
 
-  if (!name) return alert("Please enter a recipe name.");
-  if (!category) return alert("Please select a category.");
-  if (!file) return alert("Please select a file first.");
+    if (!name) return alert("Please enter a recipe name.");
+    if (!category) return alert("Please select a category.");
+    if (!file) return alert("Please select a file first.");
 
-  const ext = file.name.split(".").pop().toLowerCase();
+    const ext = file.name.split(".").pop().toLowerCase();
 
-  if (["txt"].includes(ext)) return readTextFile(file, name);
-  if (["pdf"].includes(ext)) return readPDF(file, name);
-  if (["docx"].includes(ext)) return readDocx(file, name);
-  if (["html", "htm"].includes(ext)) return readHTML(file, name);
-  if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) return readImageOCR(file, name);
+    if (["txt"].includes(ext)) return readTextFile(file, name);
+    if (["pdf"].includes(ext)) return readPDF(file, name);
+    if (["docx"].includes(ext)) return readDocx(file, name);
+    if (["html", "htm"].includes(ext)) return readHTML(file, name);
+    if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) return readImageOCR(file, name);
 
-  alert("Unsupported file type.");
-});
+    alert("Unsupported file type.");
+  });
+}
 
 // -----------------------------
 // TEXT FILE
@@ -413,6 +421,7 @@ function processRecipeText(text, name) {
 // -----------------------------
 function enableCategoryFiltering() {
   const items = document.querySelectorAll("#category-list li");
+  if (!items) return;
 
   items.forEach(li => {
     li.addEventListener("click", () => {
@@ -432,3 +441,4 @@ function enableCategoryFiltering() {
 }
 
 enableCategoryFiltering();
+
