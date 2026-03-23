@@ -246,36 +246,27 @@ function autoFormatRecipe(raw, name) {
   // SECTION DETECTION
   // -----------------------------
   function detectSection(line) {
-    const cleaned = line
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim();
+  const cleaned = line
+    .toLowerCase()
+    .trim();
 
-    // Reject lines with more than one word
-    if (cleaned.split(" ").length > 1) return null;
+  // Only match EXACT headers
+  const headers = [
+    "narrative",
+    "ingredients",
+    "directions",
+    "notes",
+    "tips",
+    "misc"
+  ];
 
-    // REAL section headers only
-    const headers = [
-      "narrative",
-      "narrative:",
-      "ingredients",
-      "ingredients:",
-      "directions",
-      "directions:",
-      "notes",
-      "notes:",
-      "tips",
-      "tips:",
-      "misc",
-      "misc:"
-    ];
-
-    if (headers.includes(cleaned)) {
-      return cleaned.replace(":", "");
-    }
-
-    return null;
+  // If the line is EXACTLY a header, return it
+  if (headers.includes(cleaned.replace(":", ""))) {
+    return cleaned.replace(":", "");
   }
+
+  return null;
+}
 
   // -----------------------------
   // SECTION BUCKETS
