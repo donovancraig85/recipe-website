@@ -410,16 +410,21 @@ function processRecipeText(text, name) {
   const category = uploadCategory.value.trim();
 
   const newRecipe = {
-    name,
-    category,
-    narrative: formatted.narrative,
-    ingredients: formatted.ingredients,
-    directions: formatted.directions,
-    notes: formatted.notes,
-    tips: formatted.tips,
-    serving: formatted.serving,
-    misc: formatted.misc
-  };
+  name,
+  category,
+  narrative: formatted.narrative,
+  ingredients: formatted.ingredients,
+  directions: formatted.directions,
+  notes: formatted.notes,
+  tips: formatted.tips,
+  misc: formatted.misc,
+
+  // NEW metadata fields
+  servings: formatted.servings,
+  prepTime: formatted.prepTime,
+  cookTime: formatted.cookTime,
+  totalTime: formatted.totalTime
+};
 
   db.collection("recipes").add(newRecipe)
     .then(docRef => {
