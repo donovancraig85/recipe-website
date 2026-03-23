@@ -185,7 +185,12 @@ function autoFormatRecipe(raw, name) {
   let seenIngredients = false;
 
   const normalizeHeader = (txt) =>
-    txt.toLowerCase().replace(/[^a-z]/g, "");
+  txt
+    .replace(/^\uFEFF/, "")      
+    .replace(/\u00A0/g, " ")     
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");    
+
 
   for (let line of lines) {
     const lower = line.toLowerCase();
@@ -236,9 +241,10 @@ function autoFormatRecipe(raw, name) {
         directions.push(line);
       } else if (mode === "ingredients") {
         ingredients.push(line);
-      } else {
+      } else if (mode === "narrative") {
         narrative.push(line);
-      }
+      } else {
+        ingredients.push(line);       }
       continue;
     }
 
