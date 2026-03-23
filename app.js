@@ -225,15 +225,15 @@ function autoFormatRecipe(raw, name) {
 
     // SECTION HEADERS
     if (header === "ingredients") {
-      mode = "ingredients";
-      seenIngredients = true;
-      continue;
-    }
+    mode = "ingredients";
+    seenIngredients = true;
+    continue;
+  }
 
     if (header === "directions" || header === "instructions") {
-      mode = "directions";
-      continue;
-    }
+    mode = "directions";
+    continue;
+  }
 
     // NUMBERED LINES
     if (/^\d+[\).]?\s/.test(line)) {
