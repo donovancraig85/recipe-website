@@ -351,7 +351,7 @@ function processRecipeText(text, name) {
       uploadCategory.value = "";
       fileInput.value = "";
 
-      recipes.push({ id: docRef.id, ...newRecipe });FaddD
+      recipes.push({ id: docRef.id, ...newRecipe });
       renderRecipes(recipes);
     })
     .catch(err => {
