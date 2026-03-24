@@ -340,39 +340,44 @@ function readTextFile(file, name, category) {
 // PDF FILE
 // -----------------------------
 async function readPDF(file, name, category) {
-  const reader = new FileReader();
-  reader.onload = async () => {
-    const typedArray = new Uint8Array(reader.result);
-    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
+  console.log("readPDF() STARTED");
 
-    let fullText = "";
-    let hasText = false;
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
+  console.log("PDF loaded. Pages:", pdf.numPages);
 
-      console.log("Page", i, "items:", content.items.length);
+  let fullText = "";
 
-      if (content.items.length > 0) {
-        hasText = true;
-        const strings = content.items.map(item => item.str);
-        fullText += strings.join("\n") + "\n";
-      }
-    }
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
 
-    if (hasText) {
-      console.log("PDF TEXT OUTPUT:", fullText);
-      return processRecipeText(fullText, name, category);
-    }
+    // Render page to canvas
+    const viewport = page.getViewport({ scale: 2 });
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
-    // FALLBACK: PDF has no text → use OCR
-    console.log("PDF contains no text. Running OCR...");
-    return readImageOCR(file, name, category);
-  };
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
 
-  reader.readAsArrayBuffer(file);
+    await page.render({ canvasContext: ctx, viewport }).promise;
+
+    // Convert canvas to image blob
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+    const imageFile = new File([blob], `page-${i}.png`, { type: "image/png" });
+
+    console.log("Running OCR on page", i);
+
+    // OCR the image
+    const result = await Tesseract.recognize(imageFile, "eng");
+    fullText += result.data.text + "\n";
+  }
+
+  console.log("OCR TEXT OUTPUT:", fullText);
+
+  processRecipeText(fullText, name, category);
 }
+
 // -----------------------------
 // DOCX FILE
 // -----------------------------
