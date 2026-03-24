@@ -321,6 +321,7 @@ if (uploadbtn) {
   });
 }
 
+
 // -----------------------------
 // TEXT FILE
 // -----------------------------
@@ -337,7 +338,7 @@ function readPDF(file, name, category) {
   const reader = new FileReader();
   reader.onload = async () => {
     const typedArray = new Uint8Array(reader.result);
-    const pdf = await pdfjsLib.getDocument(typedArray).promise;
+    const pdf = await pdfjsLib.getDocument({ data: typedArray }).promise;
 
     let fullText = "";
     for (let i = 1; i <= pdf.numPages; i++) {
@@ -351,6 +352,7 @@ function readPDF(file, name, category) {
   };
   reader.readAsArrayBuffer(file);
 }
+
 
 // -----------------------------
 // DOCX FILE
