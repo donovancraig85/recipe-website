@@ -11,11 +11,19 @@
 
   <div id="recipe-list" class="card-grid"></div>
 
-  <!-- Firebase -->
-  <script src="firebase-init.js"></script>
+  <!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-  <!-- Category loader -->
-  <script src="category.js"></script>
+<!-- Firebase Initialization -->
+<script src="firebase-init.js"></script>
+
+<!-- Shared App Logic (defines renderRecipes, loadRecipes, etc.) -->
+<script src="app.js"></script>
+
+<!-- Category Page Logic (uses renderRecipes) -->
+<script src="categories.js"></script>
+
 
 </body>
 </html>
