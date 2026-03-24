@@ -405,6 +405,7 @@ function processRecipeText(text, name, category) {
   let inDirections = false;
 
   for (let line of lines) {
+
     // Skip headers/footers
     if (line.startsWith("THREE GUYS")) continue;
     if (line.startsWith("DESSERTS")) continue;
@@ -425,13 +426,19 @@ function processRecipeText(text, name, category) {
       continue;
     }
 
-    // Ingredients: lines starting with numbers or fractions
-    if (inIngredients && (/^\d/.test(line) || /^[½¼¾⅓⅔]/.test(line))) {
+    // Ingredient section headers (Cake, Syrup, Frosting)
+    if (inIngredients && /^[A-Za-z ]+$/.test(line) && line.length < 30) {
+      ingredients.push("— " + line + " —");
+      continue;
+    }
+
+    // Ingredients: lines starting with numbers OR fractions OR words
+    if (inIngredients) {
       ingredients.push(line);
       continue;
     }
 
-    // Additional direction lines
+    // Directions: additional numbered steps
     if (inDirections && /^\d+\./.test(line)) {
       directions.push(line);
       continue;
