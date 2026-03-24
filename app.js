@@ -301,24 +301,29 @@ const uploadCategory = document.getElementById("upload-category");
 
 if (uploadbtn) {
   uploadbtn.addEventListener("click", () => {
-    const file = fileInput.files[0];
-    const name = uploadName.value.trim();
-    const category = uploadCategory.value.trim();
+  const file = fileInput.files[0];
+  const name = uploadName.value.trim();
+  const category = uploadCategory.value.trim();
 
-    if (!name) return alert("Please enter a recipe name.");
-    if (!category) return alert("Please select a category.");
-    if (!file) return alert("Please select a file first.");
+  if (!name) return alert("Please enter a recipe name.");
+  if (!category) return alert("Please select a category.");
+  if (!file) return alert("Please select a file first.");
 
-    const ext = file.name.split(".").pop().toLowerCase();
+  const cleanName = file.name.toLowerCase().split("?")[0];
+  const ext = cleanName.split(".").pop();
 
-    if (["txt"].includes(ext)) return readTextFile(file, name, category);
-    if (["pdf"].includes(ext)) return readPDF(file, name, category);
-    if (["docx"].includes(ext)) return readDocx(file, name, category);
-    if (["html", "htm"].includes(ext)) return readHTML(file, name, category);
-    if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext)) return readImageOCR(file, name, category);
+  console.log("Detected file name:", file.name);
+  console.log("Detected extension:", ext);
 
-    alert("Unsupported file type.");
-  });
+  if (ext === "txt") return readTextFile(file, name, category);
+  if (ext.includes("pdf")) return readPDF(file, name, category);
+  if (ext.includes("docx")) return readDocx(file, name, category);
+  if (ext.includes("html") || ext.includes("htm")) return readHTML(file, name, category);
+  if (["png", "jpg", "jpeg", "webp", "gif"].some(e => ext.includes(e)))
+    return readImageOCR(file, name, category);
+
+  alert("Unsupported file type.");
+});
 }
 
 
@@ -347,7 +352,7 @@ function readPDF(file, name, category) {
       const strings = content.items.map(item => item.str);
       fullText += strings.join("\n") + "\n";
     }
-    console.log("PDF TEXT OUTPUT:",fullText);
+
     processRecipeText(fullText, name, category);
   };
   reader.readAsArrayBuffer(file);
