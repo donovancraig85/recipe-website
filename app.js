@@ -485,7 +485,7 @@ function processRecipeText(text, name, category) {
   const recipe = {
     name,
     category,
-    narrative: narrative.join(" "),
+    narrative,
     ingredients,
     directions,
     servings: "",
