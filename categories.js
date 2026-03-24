@@ -1,32 +1,19 @@
-// Builds category links dynamically from the sidebar category list
+// categories.js
+// Makes each sidebar category item clickable
 
-function buildCategoryLinks() {
-  const sidebarItems = document.querySelectorAll("#category-list li");
-  const container = document.getElementById("category-links");
+function activateCategoryList() {
+  const items = document.querySelectorAll("#category-list li");
 
-  // If the page doesn't have a category-links container, stop
-  if (!container) return;
-
-  container.innerHTML = "";
-
-  sidebarItems.forEach(item => {
+  items.forEach(item => {
     const cat = item.dataset.cat;
     if (!cat) return;
 
-    const li = document.createElement("li");
-    const link = document.createElement("a");
+    item.style.cursor = "pointer";
 
-    // Link to your category template page
-    link.href = `category.html?cat=${encodeURIComponent(cat)}`;
-    link.textContent = cat;
-
-    li.appendChild(link);
-    container.appendChild(li);
+    item.addEventListener("click", () => {
+      window.location.href = `category.html?cat=${encodeURIComponent(cat)}`;
+    });
   });
 }
 
-// Run after DOM loads
-document.addEventListener("DOMContentLoaded", buildCategoryLinks);
-
-
-buildCategoryLinks();
+document.addEventListener("DOMContentLoaded", activateCategoryList);
