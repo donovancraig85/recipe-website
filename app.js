@@ -392,11 +392,11 @@ function readImageOCR(file, name) {
 function processRecipeText(text, name, category) {
   const formatted = autoFormatRecipe(text, name, category);
 
-  const category = uploadCategory.value.trim();
+  const finalCategory = uploadCategory.value.trim();
 
   const newRecipe = {
     name,
-    category,
+    category: finalCategory,
     narrative: formatted.narrative,
     ingredients: formatted.ingredients,
     directions: formatted.directions,
