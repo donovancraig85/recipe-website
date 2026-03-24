@@ -324,7 +324,7 @@ if (uploadbtn) {
 // -----------------------------
 // TEXT FILE
 // -----------------------------
-function readTextFile(file, name) {
+function readTextFile(file, name, category) {
   const reader = new FileReader();
   reader.onload = () => processRecipeText(reader.result, name, category);
   reader.readAsText(file);
@@ -333,7 +333,7 @@ function readTextFile(file, name) {
 // -----------------------------
 // PDF FILE
 // -----------------------------
-function readPDF(file, name) {
+function readPDF(file, name, category) {
   const reader = new FileReader();
   reader.onload = async () => {
     const typedArray = new Uint8Array(reader.result);
@@ -355,7 +355,7 @@ function readPDF(file, name) {
 // -----------------------------
 // DOCX FILE
 // -----------------------------
-function readDocx(file, name) {
+function readDocx(file, name, category) {
   const reader = new FileReader();
   reader.onload = async () => {
     const result = await mammoth.extractRawText({ arrayBuffer: reader.result });
@@ -367,7 +367,7 @@ function readDocx(file, name) {
 // -----------------------------
 // HTML FILE
 // -----------------------------
-function readHTML(file, name) {
+function readHTML(file, name, category) {
   const reader = new FileReader();
   reader.onload = () => {
     const div = document.createElement("div");
@@ -380,7 +380,7 @@ function readHTML(file, name) {
 // -----------------------------
 // IMAGE OCR
 // -----------------------------
-function readImageOCR(file, name) {
+function readImageOCR(file, name, category) {
   Tesseract.recognize(file, "eng").then(result => {
     processRecipeText(result.data.text, name, category);
   });
