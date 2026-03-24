@@ -279,13 +279,26 @@ function readImageOCR(file, name, category) {
 // CLEAN OCR PARSER
 // -----------------------------
 function processRecipeText(text, name, category) {
-  const clean = text
-    .replace(/[=|~—”“‘’•·]/g, "")
+  // 1. Remove obvious OCR garbage
+  text = text
+    .replace(/[=|~”“‘’•·]/g, " ")
+    .replace(/[\u00A0]/g, " ")
+    .replace(/[^a-zA-Z0-9.,:;()/%\- ]/g, " ") // remove stray glyphs
     .replace(/\s+/g, " ")
-    .replace(/Page \d+/gi, "")
     .trim();
 
-  const lines = clean.split(/(?=\b[A-Za-z0-9])/).map(l => l.trim());
+  // 2. Merge everything into full sentences before splitting
+  let merged = text
+    .replace(/(\w)\s+(\w)/g, "$1 $2") // normalize spacing
+    .replace(/([a-z])([A-Z])/g, "$1. $2") // fix missing periods
+    .replace(/(\d)\s+(\d)/g, "$1$2") // fix split numbers
+    .replace(/\s{2,}/g, " ");
+
+  // 3. Now split into real lines
+  let lines = merged
+    .split(/(?<=\.)\s+/) // split on sentence boundaries
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
 
   let narrative = [];
   let ingredients = [];
@@ -294,34 +307,34 @@ function processRecipeText(text, name, category) {
   let mode = "narrative";
 
   for (let line of lines) {
-    if (!line) continue;
+    const upper = line.toUpperCase();
 
-    if (line.toUpperCase().includes("INGREDIENTS")) {
+    // SECTION HEADERS
+    if (upper.includes("INGREDIENTS")) {
       mode = "ingredients";
       continue;
     }
-
-    if (/^\d+\./.test(line)) {
+    if (upper.includes("DIRECTIONS") || upper.includes("INSTRUCTIONS")) {
       mode = "directions";
-      directions.push(line);
       continue;
     }
 
-    if (mode === "ingredients" && /^[A-Za-z ]+$/.test(line) && line.length < 30) {
-      ingredients.push(`— ${line} —`);
-      continue;
+    // INGREDIENTS
+    if (mode === "ingredients") {
+      // detect real ingredient lines
+      if (/\d/.test(line) || /(cup|teaspoon|tablespoon|can|egg|flour|milk|cream)/i.test(line)) {
+        ingredients.push(line);
+        continue;
+      }
     }
 
-    if (mode === "ingredients" && /(\d|\bteaspoon\b|\btablespoon\b|\bcup\b|\bcan\b|\begg\b)/i.test(line)) {
-      ingredients.push(line);
-      continue;
-    }
-
+    // DIRECTIONS
     if (mode === "directions") {
       directions.push(line);
       continue;
     }
 
+    // NARRATIVE
     if (mode === "narrative") {
       narrative.push(line);
     }
