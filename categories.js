@@ -1,21 +1,20 @@
-// Read ?cat= from URL
-const params = new URLSearchParams(window.location.search);
-const category = params.get("cat");
+document.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  const category = params.get("cat");
 
-// Set page title
-document.getElementById("category-title").textContent = category;
+  document.getElementById("category-title").textContent = category;
 
-// Realtime listener for recipes
-db.collection("recipes").onSnapshot(snapshot => {
-  const recipes = snapshot.docs.map(doc => ({
-    id: doc.id,
-    ...doc.data()
-  }));
+  db.collection("recipes").onSnapshot(snapshot => {
+    const recipes = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
 
-  const filtered = recipes.filter(r =>
-    r.category &&
-    r.category.trim().toLowerCase() === category.trim().toLowerCase()
-  );
+    const filtered = recipes.filter(r =>
+      r.category &&
+      r.category.trim().toLowerCase() === category.trim().toLowerCase()
+    );
 
-  renderRecipes(filtered);
+    renderRecipes(filtered);
+  });
 });
