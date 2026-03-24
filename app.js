@@ -347,7 +347,7 @@ function readPDF(file, name, category) {
       const strings = content.items.map(item => item.str);
       fullText += strings.join("\n") + "\n";
     }
-
+    console.log("PDF TEXT OUTPUT:",fullText);
     processRecipeText(fullText, name, category);
   };
   reader.readAsArrayBuffer(file);
