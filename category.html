@@ -1,12 +1,28 @@
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Category</title>
+  <link rel="stylesheet" href="style.css">
+</head>
 
-<!-- Firebase Initialization -->
-<script src="firebase-init.js"></script>
+<body>
 
-<!-- Shared App Logic (defines renderRecipes, loadRecipes, etc.) -->
-<script src="app.js"></script>
+  <h1 id="category-title"></h1>
 
-<!-- Category Page Logic (uses renderRecipes) -->
-<script src="categories.js"></script>
+  <div id="recipe-list" class="card-grid"></div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+
+  <!-- Firebase Initialization -->
+  <script src="firebase-init.js"></script>
+
+  <!-- Shared App Logic (defines renderRecipes, loadRecipes, etc.) -->
+  <script src="app.js"></script>
+
+  <!-- Category Page Logic (uses renderRecipes) -->
+  <script src="categories.js"></script>
+
+</body>
+</html>
