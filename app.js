@@ -426,19 +426,23 @@ function processRecipeText(text, name, category) {
       continue;
     }
 
-    // Ingredient section headers (Cake, Syrup, Frosting)
-    if (inIngredients && /^[A-Za-z ]+$/.test(line) && line.length < 30) {
+    // Ingredient section headers (Cake, Syrup, Frosting, etc.)
+    if (
+      inIngredients &&
+      /^[A-Za-zÀ-ÿ ']+$/.test(line) &&
+      line.length < 40
+    ) {
       ingredients.push("— " + line + " —");
       continue;
     }
 
-    // Ingredients: lines starting with numbers OR fractions OR words
+    // Ingredients: ANY line inside ingredient mode
     if (inIngredients) {
       ingredients.push(line);
       continue;
     }
 
-    // Directions: additional numbered steps
+    // Additional direction lines
     if (inDirections && /^\d+\./.test(line)) {
       directions.push(line);
       continue;
