@@ -3,6 +3,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const params = new URLSearchParams(window.location.search);
   const category = params.get("cat");
 
+  // If category is missing or null, avoid crashing
+  if (!category || typeof category !== "string") {
+    renderRecipes([]); 
+    return;
+  }
+
   // Set page title
   const titleEl = document.getElementById("category-title");
   if (titleEl) {
@@ -17,11 +23,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }));
 
     const filtered = recipes.filter(r => {
-      // Ensure category exists and is a string
-      if (typeof r.category !== "string") return false;
+      const cat = r.category;
+
+      // Skip null, undefined, non-strings
+      if (typeof cat !== "string") return false;
 
       return (
-        r.category.trim().toLowerCase() ===
+        cat.trim().toLowerCase() ===
         category.trim().toLowerCase()
       );
     });
