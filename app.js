@@ -278,69 +278,91 @@ function readImageOCR(file, name, category) {
 // -----------------------------
 // CLEAN OCR PARSER
 // -----------------------------
-function processRecipeText(text, name, category) {
-  // 1. Remove obvious OCR garbage
-  text = text
-    .replace(/THREE GUYS FROM MIAMI COOK CUBAN/gi, "")
-    .replace(/DESSERTS/gi, "")
-    .replace(/\b\d{3}\b/g, "") // page numbers like 211, 212, 213
-    .replace(/[=|~”“‘’•·]/g, " ")
-    .replace(/[\u00A0]/g, " ")
-    .replace(/[^a-zA-Z0-9.,:;()/%\- ]/g, " ") // remove stray glyphs
-    .replace(/\s+/g, " ")
+function parseOCRRecipe(rawText, name, category) {
+  // -----------------------------
+  // 1. NORMALIZE RAW OCR TEXT
+  // -----------------------------
+  let text = rawText
+    .replace(/\r/g, "")
+    .replace(/[|=~”“‘’•·]/g, " ")
+    .replace(/\u00A0/g, " ")
+    .replace(/ {2,}/g, " ")
+    .replace(/\t+/g, " ")
     .trim();
 
-  // 2. Merge broken OCR lines into real sentences
-  let merged = text
-    .replace(/([a-z])([A-Z])/g, "$1. $2") // fix missing periods
-    .replace(/(\d)\s+(\d)/g, "$1$2") // fix split numbers
-    .replace(/\s{2,}/g, " ");
+  // Remove page numbers (common OCR artifact)
+  text = text.replace(/\b(Page)?\s?\d{1,4}\b/gi, "");
 
-  // 3. Split into sentences
-  let lines = merged
-    .split(/(?<=\.)\s+/)
+  // Fix hyphenated line breaks
+  text = text.replace(/-\s*\n\s*/g, "");
+
+  // -----------------------------
+  // 2. SPLIT INTO CLEAN LINES
+  // -----------------------------
+  let lines = text
+    .split(/\n+/)
     .map(l => l.trim())
     .filter(l => l.length > 0);
 
+  // -----------------------------
+  // 3. FUZZY HEADER DETECTION
+  // -----------------------------
+  const isHeader = (line, word) =>
+    line.replace(/\s+/g, "").toLowerCase().includes(word);
+
+  // -----------------------------
+  // 4. PREPARE OUTPUT ARRAYS
+  // -----------------------------
   let narrative = [];
   let ingredients = [];
   let directions = [];
 
   let mode = "narrative";
 
+  // -----------------------------
+  // 5. PARSE LINE BY LINE
+  // -----------------------------
   for (let line of lines) {
-    const upper = line.toUpperCase();
+    const clean = line.trim();
 
-    // SECTION HEADERS
-    if (upper.includes("INGREDIENTS")) {
+    // Switch modes based on fuzzy header match
+    if (isHeader(clean, "ingredient")) {
       mode = "ingredients";
       continue;
     }
-    if (upper.includes("DIRECTIONS") || upper.includes("INSTRUCTIONS")) {
+    if (isHeader(clean, "direction") || isHeader(clean, "instruction")) {
       mode = "directions";
       continue;
     }
 
-    // INGREDIENTS
+    // INGREDIENT DETECTION (very flexible)
+    const ingredientPattern =
+      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+)?\s*(cup|teaspoon|tablespoon|tbsp|tsp|oz|ounce|can|egg|eggs|ml|g|kg|lb|pound|stick|clove|pinch|dash)/i;
+
     if (mode === "ingredients") {
-      if (/\d/.test(line) || /(cup|teaspoon|tablespoon|can|egg|flour|milk|cream|rum|sugar)/i.test(line)) {
-        ingredients.push(line);
+      if (ingredientPattern.test(clean)) {
+        ingredients.push(clean);
         continue;
       }
     }
 
-    // DIRECTIONS
+    // DIRECTION DETECTION
+    const stepPattern = /^(\d+[\).]|step\s?\d+)/i;
+
     if (mode === "directions") {
-      directions.push(line);
-      continue;
+      if (stepPattern.test(clean) || clean.length > 20) {
+        directions.push(clean);
+        continue;
+      }
     }
 
-    // NARRATIVE
-    if (mode === "narrative") {
-      narrative.push(line);
-    }
+    // Otherwise, narrative
+    narrative.push(clean);
   }
 
+  // -----------------------------
+  // 6. BUILD FINAL RECIPE OBJECT
+  // -----------------------------
   const recipe = {
     name,
     category,
@@ -354,6 +376,9 @@ function processRecipeText(text, name, category) {
     createdAt: new Date()
   };
 
+  // -----------------------------
+  // 7. SAVE TO FIRESTORE
+  // -----------------------------
   db.collection("recipes").add(recipe).then(() => {
     alert("Recipe uploaded!");
   });
