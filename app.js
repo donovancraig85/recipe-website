@@ -236,6 +236,7 @@ async function readPDF(file, name, category) {
 
   // Convert canvas → PNG Base64
   const pngBase64 = canvas.toDataURL("image/png").split(",")[1];
+  console.log("PNG length:", pngBase64?.length);
 
   // Send to Azure OCR
   const text = await azureOCR({ base64: pngBase64 });
