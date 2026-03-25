@@ -155,8 +155,11 @@ if (search) {
 // -----------------------------
 // AZURE OCR FUNCTION CALL
 // -----------------------------
+const OCR_ENDPOINT =
+  "https://recipeocr.azurewebsites.net/api/ocr?code=Agld_zblbROeGZw-4AM1VcV1LIe3I6BYOyuiAxcFQgM3AzFuOrRlRw==";
+
 async function azureOCR(body) {
-  const response = await fetch("https://recipes-ocr.azurewebsites.net/api/ocr", {
+  const response = await fetch(OCR_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
@@ -270,37 +273,36 @@ function fileToBase64(file) {
 // -----------------------------
 // OCR CLEANUP + PARSER
 // -----------------------------
-function processRecipeText(rawText, name, category) {
+ffunction processRecipeText(rawText, name, category) {
+  // -----------------------------
+  // 1. BASIC NORMALIZATION
+  // -----------------------------
   let text = rawText
     .replace(/\r/g, "\n")
-    .replace(/[|=~”“‘’•·]/g, " ")
     .replace(/\u00A0/g, " ")
     .replace(/[ ]{2,}/g, " ")
     .replace(/\t+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 
+  // Remove common junk
   text = text
-    .replace(/THREE GUYS FROM MIAMI COOK CUBAN/gi, "")
-    .replace(/DESSERTS/gi, "")
-    .replace(/\bPage\s?\d+\b/gi, "")
-    .replace(/\b\d{3}\b/g, "");
+    .replace(/\bPage\s*\d+\b/gi, "")
+    .replace(/\b\d{1,3}\s*of\s*\d{1,3}\b/gi, "") // "1 of 3"
+    .replace(/-{3,}/g, "") // long dividers
+    .trim();
 
-  text = text.replace(/^[A-Za-zÁÉÍÓÚÜÑ]+:/gm, "");
-  text = text.replace(/-\s*\n\s*/g, "");
-
-  text = text
-    .split("\n")
-    .filter(l => l.trim().length > 3)
-    .filter(l => !/^[^a-zA-Z0-9]+$/.test(l))
-    .join("\n");
-
-  text = text.replace(/([a-z])\s+([a-z])/gi, "$1$2");
-
+  // -----------------------------
+  // 2. SPLIT INTO LINES
+  // -----------------------------
   let lines = text
     .split(/\n+/)
     .map(l => l.trim())
     .filter(l => l.length > 0);
 
+  // -----------------------------
+  // 3. SECTION DETECTION
+  // -----------------------------
   const isHeader = (line, word) =>
     line.replace(/\s+/g, "").toLowerCase().includes(word);
 
@@ -313,6 +315,7 @@ function processRecipeText(rawText, name, category) {
   for (let line of lines) {
     const clean = line.trim();
 
+    // Switch modes
     if (isHeader(clean, "ingredient")) {
       mode = "ingredients";
       continue;
@@ -322,14 +325,20 @@ function processRecipeText(rawText, name, category) {
       continue;
     }
 
+    // -----------------------------
+    // 4. INGREDIENT DETECTION
+    // -----------------------------
     const ingredientPattern =
-      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+)?\s*(cup|cups|teaspoon|teaspoons|tablespoon|tablespoons|tbsp|tsp|oz|ounce|ounces|can|cans|egg|eggs|ml|g|kg|lb|pound|pounds|stick|sticks|clove|cloves|pinch|dash)/i;
+      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+)?\s*(cup|cups|teaspoon|teaspoons|tablespoon|tablespoons|tbsp|tsp|oz|ounce|ounces|can|cans|egg|eggs|ml|g|kg|lb|pound|pounds|stick|sticks|clove|cloves|pinch|dash)\b/i;
 
     if (mode === "ingredients" && ingredientPattern.test(clean)) {
       ingredients.push(clean);
       continue;
     }
 
+    // -----------------------------
+    // 5. STEP DETECTION
+    // -----------------------------
     const stepPattern = /^(\d+[\).]|step\s?\d+)/i;
 
     if (mode === "directions" && (stepPattern.test(clean) || clean.length > 20)) {
@@ -337,9 +346,15 @@ function processRecipeText(rawText, name, category) {
       continue;
     }
 
+    // -----------------------------
+    // 6. DEFAULT → narrative
+    // -----------------------------
     narrative.push(clean);
   }
 
+  // -----------------------------
+  // 7. SAVE TO FIRESTORE
+  // -----------------------------
   const recipe = {
     name,
     category,
@@ -360,6 +375,7 @@ function processRecipeText(rawText, name, category) {
     alert("Error saving recipe. Check console.");
   });
 }
+
 
 // -----------------------------
 // CATEGORY FILTERING
