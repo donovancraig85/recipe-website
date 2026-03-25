@@ -222,7 +222,6 @@ async function readPDF(file, name, category) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-  // Render FIRST page only (you can loop later if you want multi-page)
   const page = await pdf.getPage(1);
   const viewport = page.getViewport({ scale: 2.0 });
 
@@ -234,15 +233,13 @@ async function readPDF(file, name, category) {
 
   await page.render({ canvasContext: ctx, viewport }).promise;
 
-  // Convert canvas → PNG Base64
   const pngBase64 = canvas.toDataURL("image/png").split(",")[1];
   console.log("PNG length:", pngBase64?.length);
 
-  // Send to Azure OCR
   const text = await azureOCR({ base64: pngBase64 });
-
   processRecipeText(text, name, category);
 }
+
 
 // -----------------------------
 // DOCX FILE

@@ -5,13 +5,6 @@
   <title>My Recipes</title>
   <link rel="stylesheet" href="style.css">
 
-  <!-- PDF.js v3.x (required for PDF → Image conversion) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc =
-      "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  </script>
-
   <!-- DOCX support -->
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
 </head>
@@ -81,18 +74,21 @@
 
   </div>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<!-- PDF.js v3.x (must load BEFORE app.js, but AFTER body) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+</script>
 
-  <!-- Firebase config -->
-  <script src="firebase-init.js"></script>
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-  <!-- App logic -->
-  <script src="app.js"></script>
+<script src="firebase-init.js"></script>
+<script src="app.js"></script>
+<script src="categories.js"></script>
 
-  <!-- Category filtering -->
-  <script src="categories.js"></script>
 
 </body>
 </html>
