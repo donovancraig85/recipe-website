@@ -218,7 +218,7 @@ function readTextFile(file, name, category) {
 // -----------------------------
 // PDF → Azure OCR
 // -----------------------------
-sync function readPDF(file, name, category) {
+async function readPDF(file, name, category) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
