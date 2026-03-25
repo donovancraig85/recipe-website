@@ -156,7 +156,7 @@ if (search) {
 // AZURE OCR FUNCTION CALL
 // -----------------------------
 async function azureOCR(body) {
-  const response = await fetch("https://recipesocr.azurewebsites.net/api/ocr", {
+  const response = await fetch("https://recipes-ocr.azurewebsites.net/api/ocr", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
