@@ -9,13 +9,11 @@ let recipes = [];
 function cleanText(raw) {
   return raw
     .replace(/\r/g, "\n")
-    .replace(/<[^>]*>/g, "")
-    .replace(/&nbsp;/g, " ")
-    .replace(/[•●▪■]/g, "")
-    .replace(/\t+/g, " ")
+    .replace(/[|=~”“‘’•·]/g, " ")
+    .replace(/\u00A0/g, " ")
     .replace(/[ ]{2,}/g, " ")
+    .replace(/\t+/g, " ")
     .replace(/\n{2,}/g, "\n")
-    .replace(/[^\S\r\n]+/g, " ")
     .trim();
 }
 
@@ -35,8 +33,6 @@ function loadRecipes() {
     }));
 
     renderRecipes(recipes);
-  }).catch(err => {
-    console.error("Error loading recipes:", err);
   });
 }
 
@@ -45,7 +41,6 @@ function renderRecipes(list) {
   if (!container) return;
 
   container.innerHTML = "";
-
   list.sort((a, b) => a.name.localeCompare(b.name));
 
   list.forEach(recipe => {
@@ -71,91 +66,21 @@ function renderRecipes(list) {
 loadRecipes();
 
 // -----------------------------
-// FUZZY MATCHING
+// OCR.space ONLINE OCR
 // -----------------------------
-function levenshteinDistance(a, b) {
-  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
-  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+async function onlineOCR(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("language", "eng");
+  formData.append("OCREngine", "2");
 
-  for (let i = 1; i <= b.length; i++) {
-    for (let j = 1; j <= a.length; j++) {
-      const cost = b[i - 1] === a[j - 1] ? 0 : 1;
-      matrix[i][j] = Math.min(
-        matrix[i - 1][j] + 1,
-        matrix[i][j - 1] + 1,
-        matrix[i - 1][j - 1] + cost
-      );
-    }
-  }
-  return matrix[b.length][a.length];
-}
-
-function fuzzyMatch(text, query) {
-  text = text.toLowerCase();
-  query = query.toLowerCase();
-  if (text.includes(query)) return true;
-  return levenshteinDistance(text, query) <= 2;
-}
-
-// -----------------------------
-// SEARCH + DROPDOWN
-// -----------------------------
-const search = document.getElementById("search");
-const searchBtn = document.getElementById("search-btn");
-const searchResults = document.getElementById("search-results");
-
-function updateSearchDropdown(list) {
-  if (!searchResults) return;
-
-  searchResults.innerHTML = "";
-
-  const query = search.value.toLowerCase().trim();
-  if (!query) {
-    searchResults.style.display = "none";
-    return;
-  }
-
-  const nameMatches = list.filter(r =>
-    r.name.toLowerCase().includes(query)
-  );
-
-  if (nameMatches.length === 0) {
-    searchResults.style.display = "none";
-    return;
-  }
-
-  nameMatches.slice(0, 8).forEach(recipe => {
-    const item = document.createElement("div");
-    item.textContent = recipe.name;
-    item.addEventListener("click", () => {
-      window.location.href = `recipe.html?id=${encodeURIComponent(recipe.id)}`;
-    });
-    searchResults.appendChild(item);
+  const response = await fetch("https://api.ocr.space/parse/image", {
+    method: "POST",
+    body: formData
   });
 
-  searchResults.style.display = "block";
-}
-
-function runSearch() {
-  const query = search.value.toLowerCase().trim();
-
-  if (!query) {
-    renderRecipes(recipes);
-    searchResults.style.display = "none";
-    return;
-  }
-
-  const filtered = recipes.filter(recipe =>
-    fuzzyMatch(recipe.name || "", query)
-  );
-
-  renderRecipes(filtered);
-  updateSearchDropdown(filtered);
-}
-
-if (search) {
-  search.addEventListener("input", runSearch);
-  searchBtn?.addEventListener("click", () => runSearch());
+  const data = await response.json();
+  return data.ParsedResults?.[0]?.ParsedText || "";
 }
 
 // -----------------------------
@@ -176,17 +101,13 @@ if (uploadbtn) {
     if (!category) return alert("Please select a category.");
     if (!file) return alert("Please select a file first.");
 
-    const cleanName = file.name.toLowerCase().split("?")[0];
-    const ext = cleanName.split(".").pop();
-
-    console.log("Detected file name:", file.name);
-    console.log("Detected extension:", ext);
+    const ext = file.name.toLowerCase().split(".").pop();
 
     if (ext === "txt") return readTextFile(file, name, category);
     if (ext.includes("pdf")) return readPDF(file, name, category);
     if (ext.includes("docx")) return readDocx(file, name, category);
     if (ext.includes("html") || ext.includes("htm")) return readHTML(file, name, category);
-    if (["png", "jpg", "jpeg", "webp", "gif"].some(e => ext.includes(e)))
+    if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext))
       return readImageOCR(file, name, category);
 
     alert("Unsupported file type.");
@@ -203,22 +124,18 @@ function readTextFile(file, name, category) {
 }
 
 // -----------------------------
-// PDF → OCR PIPELINE
+// PDF → IMAGE → OCR.space
 // -----------------------------
 async function readPDF(file, name, category) {
-  console.log("readPDF() STARTED");
-
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-
-  console.log("PDF loaded. Pages:", pdf.numPages);
 
   let fullText = "";
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-
     const viewport = page.getViewport({ scale: 2 });
+
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
@@ -230,13 +147,9 @@ async function readPDF(file, name, category) {
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png"));
     const imageFile = new File([blob], `page-${i}.png`, { type: "image/png" });
 
-    console.log("Running OCR on page", i);
-
-    const result = await Tesseract.recognize(imageFile, "eng");
-    fullText += result.data.text + "\n";
+    const text = await onlineOCR(imageFile);
+    fullText += text + "\n";
   }
-
-  console.log("OCR TEXT OUTPUT:", fullText);
 
   processRecipeText(fullText, name, category);
 }
@@ -267,65 +180,60 @@ function readHTML(file, name, category) {
 }
 
 // -----------------------------
-// IMAGE OCR
+// IMAGE OCR → OCR.space
 // -----------------------------
 function readImageOCR(file, name, category) {
-  Tesseract.recognize(file, "eng").then(result => {
-    processRecipeText(result.data.text, name, category);
+  onlineOCR(file).then(text => {
+    processRecipeText(text, name, category);
   });
 }
 
 // -----------------------------
-// CLEAN OCR PARSER
+// OCR CLEANUP + PARSER
 // -----------------------------
 function processRecipeText(rawText, name, category) {
-  // -----------------------------
-  // 1. NORMALIZE RAW OCR TEXT
-  // -----------------------------
   let text = rawText
-    .replace(/\r/g, "")
+    .replace(/\r/g, "\n")
     .replace(/[|=~”“‘’•·]/g, " ")
     .replace(/\u00A0/g, " ")
-    .replace(/ {2,}/g, " ")
+    .replace(/[ ]{2,}/g, " ")
     .replace(/\t+/g, " ")
     .trim();
 
-  // Remove page numbers (common OCR artifact)
-  text = text.replace(/\b(Page)?\s?\d{1,4}\b/gi, "");
+  text = text
+    .replace(/THREE GUYS FROM MIAMI COOK CUBAN/gi, "")
+    .replace(/DESSERTS/gi, "")
+    .replace(/\bPage\s?\d+\b/gi, "")
+    .replace(/\b\d{3}\b/g, "");
 
-  // Fix hyphenated line breaks
+  text = text.replace(/^[A-Za-zÁÉÍÓÚÜÑ]+:/gm, "");
   text = text.replace(/-\s*\n\s*/g, "");
 
-  // -----------------------------
-  // 2. SPLIT INTO CLEAN LINES
-  // -----------------------------
+  text = text
+    .split("\n")
+    .filter(l => l.trim().length > 3)
+    .filter(l => !/^[^a-zA-Z0-9]+$/.test(l))
+    .join("\n");
+
+  text = text.replace(/([a-z])\s+([a-z])/gi, "$1$2");
+
   let lines = text
     .split(/\n+/)
     .map(l => l.trim())
     .filter(l => l.length > 0);
 
-  // -----------------------------
-  // 3. FUZZY HEADER DETECTION
-  // -----------------------------
   const isHeader = (line, word) =>
     line.replace(/\s+/g, "").toLowerCase().includes(word);
 
-  // -----------------------------
-  // 4. PREPARE OUTPUT ARRAYS
-  // -----------------------------
   let narrative = [];
   let ingredients = [];
   let directions = [];
 
   let mode = "narrative";
 
-  // -----------------------------
-  // 5. PARSE LINE BY LINE
-  // -----------------------------
   for (let line of lines) {
     const clean = line.trim();
 
-    // Switch modes based on fuzzy header match
     if (isHeader(clean, "ingredient")) {
       mode = "ingredients";
       continue;
@@ -335,34 +243,24 @@ function processRecipeText(rawText, name, category) {
       continue;
     }
 
-    // INGREDIENT DETECTION (very flexible)
     const ingredientPattern =
       /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+)?\s*(cup|teaspoon|tablespoon|tbsp|tsp|oz|ounce|can|egg|eggs|ml|g|kg|lb|pound|stick|clove|pinch|dash)/i;
 
-    if (mode === "ingredients") {
-      if (ingredientPattern.test(clean)) {
-        ingredients.push(clean);
-        continue;
-      }
+    if (mode === "ingredients" && ingredientPattern.test(clean)) {
+      ingredients.push(clean);
+      continue;
     }
 
-    // DIRECTION DETECTION
     const stepPattern = /^(\d+[\).]|step\s?\d+)/i;
 
-    if (mode === "directions") {
-      if (stepPattern.test(clean) || clean.length > 20) {
-        directions.push(clean);
-        continue;
-      }
+    if (mode === "directions" && (stepPattern.test(clean) || clean.length > 20)) {
+      directions.push(clean);
+      continue;
     }
 
-    // Otherwise, narrative
     narrative.push(clean);
   }
 
-  // -----------------------------
-  // 6. BUILD FINAL RECIPE OBJECT
-  // -----------------------------
   const recipe = {
     name,
     category,
@@ -376,9 +274,6 @@ function processRecipeText(rawText, name, category) {
     createdAt: new Date()
   };
 
-  // -----------------------------
-  // 7. SAVE TO FIRESTORE
-  // -----------------------------
   db.collection("recipes").add(recipe).then(() => {
     alert("Recipe uploaded!");
   });
