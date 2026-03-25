@@ -33,6 +33,8 @@ function loadRecipes() {
     }));
 
     renderRecipes(recipes);
+  }).catch(err => {
+    console.error("Error loading recipes:", err);
   });
 }
 
@@ -66,6 +68,91 @@ function renderRecipes(list) {
 loadRecipes();
 
 // -----------------------------
+// SEARCH + DROPDOWN
+// -----------------------------
+const search = document.getElementById("search");
+const searchBtn = document.getElementById("search-btn");
+const searchResults = document.getElementById("search-results");
+
+function levenshteinDistance(a, b) {
+  const matrix = Array.from({ length: b.length + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      const cost = b[i - 1] === a[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+function fuzzyMatch(text, query) {
+  text = text.toLowerCase();
+  query = query.toLowerCase();
+  if (text.includes(query)) return true;
+  return levenshteinDistance(text, query) <= 2;
+}
+
+function updateSearchDropdown(list) {
+  if (!searchResults) return;
+
+  searchResults.innerHTML = "";
+
+  const query = search.value.toLowerCase().trim();
+  if (!query) {
+    searchResults.style.display = "none";
+    return;
+  }
+
+  const nameMatches = list.filter(r =>
+    (r.name || "").toLowerCase().includes(query)
+  );
+
+  if (nameMatches.length === 0) {
+    searchResults.style.display = "none";
+    return;
+  }
+
+  nameMatches.slice(0, 8).forEach(recipe => {
+    const item = document.createElement("div");
+    item.textContent = recipe.name;
+    item.addEventListener("click", () => {
+      window.location.href = `recipe.html?id=${encodeURIComponent(recipe.id)}`;
+    });
+    searchResults.appendChild(item);
+  });
+
+  searchResults.style.display = "block";
+}
+
+function runSearch() {
+  const query = search.value.toLowerCase().trim();
+
+  if (!query) {
+    renderRecipes(recipes);
+    if (searchResults) searchResults.style.display = "none";
+    return;
+  }
+
+  const filtered = recipes.filter(recipe =>
+    fuzzyMatch(recipe.name || "", query)
+  );
+
+  renderRecipes(filtered);
+  updateSearchDropdown(filtered);
+}
+
+if (search) {
+  search.addEventListener("input", runSearch);
+  searchBtn?.addEventListener("click", () => runSearch());
+}
+
+// -----------------------------
 // OCR.space ONLINE OCR
 // -----------------------------
 async function onlineOCR(file) {
@@ -73,14 +160,26 @@ async function onlineOCR(file) {
   formData.append("file", file);
   formData.append("language", "eng");
   formData.append("OCREngine", "2");
+  formData.append("apikey", "K89237192788957"); // your API key
 
   const response = await fetch("https://api.ocr.space/parse/image", {
     method: "POST",
     body: formData
   });
 
+  if (!response.ok) {
+    console.error("OCR HTTP error:", response.status, response.statusText);
+    return "";
+  }
+
   const data = await response.json();
-  return data.ParsedResults?.[0]?.ParsedText || "";
+
+  if (!data.ParsedResults || !data.ParsedResults[0]) {
+    console.error("OCR API error:", data);
+    return "";
+  }
+
+  return data.ParsedResults[0].ParsedText || "";
 }
 
 // -----------------------------
@@ -101,7 +200,7 @@ if (uploadbtn) {
     if (!category) return alert("Please select a category.");
     if (!file) return alert("Please select a file first.");
 
-    const ext = file.name.toLowerCase().split(".").pop();
+    const ext = file.name.toLowerCase().split(".").pop() || "";
 
     if (ext === "txt") return readTextFile(file, name, category);
     if (ext.includes("pdf")) return readPDF(file, name, category);
@@ -244,7 +343,7 @@ function processRecipeText(rawText, name, category) {
     }
 
     const ingredientPattern =
-      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+)?\s*(cup|teaspoon|tablespoon|tbsp|tsp|oz|ounce|can|egg|eggs|ml|g|kg|lb|pound|stick|clove|pinch|dash)/i;
+      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+)?\s*(cup|cups|teaspoon|teaspoons|tablespoon|tablespoons|tbsp|tsp|oz|ounce|ounces|can|cans|egg|eggs|ml|g|kg|lb|pound|pounds|stick|sticks|clove|cloves|pinch|dash)/i;
 
     if (mode === "ingredients" && ingredientPattern.test(clean)) {
       ingredients.push(clean);
@@ -276,6 +375,9 @@ function processRecipeText(rawText, name, category) {
 
   db.collection("recipes").add(recipe).then(() => {
     alert("Recipe uploaded!");
+  }).catch(err => {
+    console.error("Error saving recipe:", err);
+    alert("Error saving recipe. Check console.");
   });
 }
 
