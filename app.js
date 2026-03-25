@@ -273,7 +273,7 @@ function fileToBase64(file) {
 // -----------------------------
 // OCR CLEANUP + PARSER
 // -----------------------------
-ffunction processRecipeText(rawText, name, category) {
+function processRecipeText(rawText, name, category) {
   // -----------------------------
   // 1. BASIC NORMALIZATION
   // -----------------------------
