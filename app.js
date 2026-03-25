@@ -218,9 +218,28 @@ function readTextFile(file, name, category) {
 // -----------------------------
 // PDF → Azure OCR
 // -----------------------------
-async function readPDF(file, name, category) {
-  const base64 = await fileToBase64(file);
-  const text = await azureOCR({ pdfBase64: base64 });
+sync function readPDF(file, name, category) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+  // Render FIRST page only (you can loop later if you want multi-page)
+  const page = await pdf.getPage(1);
+  const viewport = page.getViewport({ scale: 2.0 });
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+
+  await page.render({ canvasContext: ctx, viewport }).promise;
+
+  // Convert canvas → PNG Base64
+  const pngBase64 = canvas.toDataURL("image/png").split(",")[1];
+
+  // Send to Azure OCR
+  const text = await azureOCR({ base64: pngBase64 });
+
   processRecipeText(text, name, category);
 }
 
