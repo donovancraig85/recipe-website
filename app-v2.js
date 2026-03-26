@@ -205,10 +205,6 @@ if (uploadbtn) {
     alert("Unsupported file type.");
   });
 }
-// -----------------------------
-// GLOBALS
-// -----------------------------
-let recipes = [];
 
 // -----------------------------
 // UNIVERSAL TEXT CLEANER
