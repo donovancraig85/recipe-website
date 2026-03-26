@@ -224,27 +224,33 @@ async function readPDF(file, name, category) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
-  const page = await pdf.getPage(1);
-  const viewport = page.getViewport({ scale: 2.0 });
+  let fullText = "";
 
-  const canvas = document.createElement("canvas");
-  const ctx = canvas.getContext("2d");
+  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 2.0 });
 
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
 
-  await page.render({ canvasContext: ctx, viewport }).promise;
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
 
-  const pngBlob = await new Promise((resolve, reject) => {
-    canvas.toBlob(
-      blob => (blob ? resolve(blob) : reject(new Error("Failed to create PNG blob"))),
-      "image/png",
-      1.0
-    );
-  });
+    await page.render({ canvasContext: ctx, viewport }).promise;
 
-  const text = await runOCR(pngBlob);
-  processRecipeText(text, name, category);
+    const pngBlob = await new Promise((resolve, reject) => {
+      canvas.toBlob(
+        blob => (blob ? resolve(blob) : reject(new Error("Failed to create PNG blob"))),
+        "image/png",
+        1.0
+      );
+    });
+
+    const pageText = await runOCR(pngBlob);
+    fullText += "\n" + pageText;
+  }
+
+  processRecipeText(fullText, name, category);
 }
 
 // -----------------------------
@@ -275,11 +281,17 @@ function readHTML(file, name, category) {
 }
 
 // -----------------------------
-// IMAGE OCR → RAW BINARY
+// IMAGE OCR
 // -----------------------------
-async function readImageOCR(file, name, category) {
-  const text = await runOCR(file);
-  processRecipeText(text, name, category);
+async function readImageOCR(fileList, name, category) {
+  let fullText = "";
+
+  for (const file of fileList) {
+    const text = await runOCR(file);
+    fullText += "\n" + text;
+  }
+
+  processRecipeText(fullText, name, category);
 }
 
 // -----------------------------
