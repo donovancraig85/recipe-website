@@ -1,4 +1,4 @@
-// app-v2.js
+// app.js v2
 // -----------------------------
 // GLOBALS
 // -----------------------------
@@ -295,6 +295,22 @@ async function readImageOCR(fileList, name, category) {
 }
 
 // -----------------------------
+// CAPITALIZATION NORMALIZER
+// -----------------------------
+function normalizeCaps(line) {
+  if (line.length < 4) return line;
+  const letters = line.replace(/[^A-Za-z]/g, "");
+  if (!letters) return line;
+  const upperCount = (letters.match(/[A-Z]/g) || []).length;
+  const lowerCount = (letters.match(/[a-z]/g) || []).length;
+  if (upperCount > 0 && lowerCount === 0) {
+    const lower = line.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  }
+  return line;
+}
+
+// -----------------------------
 // UNIVERSAL OCR NORMALIZER
 // -----------------------------
 function normalizeOCRText(text) {
@@ -368,7 +384,7 @@ function normalizeOCRText(text) {
     if (knownSections.some(s => lower.includes(s))) {
       return "\n" + l.toUpperCase() + "\n";
     }
-    return l;
+    return normalizeCaps(l);
   });
 
   return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim();
@@ -419,6 +435,8 @@ function processRecipeText(rawText, name, category) {
 
   let mode = "narrative";
 
+  const verbPattern = /\b(preheat|beat|whisk|fold|pour|bake|refrigerate|serve|mix|stir|cook|cool|spread|cut|add|combine|grease|line|whip|frost)\b/i;
+
   for (let line of lines) {
     const clean = line.trim();
     const lower = clean.toLowerCase();
@@ -438,15 +456,28 @@ function processRecipeText(rawText, name, category) {
       continue;
     }
 
- 
     const stepPattern = /^(\d+[\).]|step\s?\d+)/i;
+    const ingredientPattern =
+      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+|\d+\s?\d\/\d|\(?\d+.*\)?)\s*[a-z]/i;
+
     if (stepPattern.test(clean)) {
       directions.push(clean);
+      mode = "directions";
       continue;
     }
 
-    const ingredientPattern =
-      /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+|\d+\s?\d\/\d|\(?\d+.*\)?)\s*[a-z]/i;
+    if (mode === "directions" && !ingredientPattern.test(clean) && clean.length > 0) {
+      if (directions.length > 0) {
+        directions[directions.length - 1] += " " + clean;
+        continue;
+      }
+    }
+
+    if (verbPattern.test(clean)) {
+      directions.push(clean);
+      mode = "directions";
+      continue;
+    }
 
     if (mode === "ingredients" && ingredientPattern.test(clean)) {
       ingredients.push(clean);
