@@ -299,14 +299,19 @@ async function readImageOCR(fileList, name, category) {
 // -----------------------------
 function normalizeCaps(line) {
   if (line.length < 4) return line;
+
   const letters = line.replace(/[^A-Za-z]/g, "");
   if (!letters) return line;
+
   const upperCount = (letters.match(/[A-Z]/g) || []).length;
   const lowerCount = (letters.match(/[a-z]/g) || []).length;
-  if (upperCount > 0 && lowerCount === 0) {
+
+  // If MOST letters are uppercase → convert to sentence case
+  if (upperCount > lowerCount * 2) {
     const lower = line.toLowerCase();
     return lower.charAt(0).toUpperCase() + lower.slice(1);
   }
+
   return line;
 }
 
@@ -435,7 +440,7 @@ function processRecipeText(rawText, name, category) {
 
   let mode = "narrative";
 
-  const verbPattern = /\b(preheat|beat|whisk|fold|pour|bake|refrigerate|serve|mix|stir|cook|cool|spread|cut|add|combine|grease|line|whip|frost)\b/i;
+  const verbPattern = /\b(preheat|beat|whisk|fold|pour|bake|refrigerate|serve|mix|stir|cook|cool|spread|cut|add|combine|grease|line)\b/i;
 
   for (let line of lines) {
     const clean = line.trim();
