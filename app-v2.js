@@ -156,35 +156,23 @@ if (search) {
 // -----------------------------
 // AZURE OCR (RAW BINARY)
 // -----------------------------
-const OCR_ENDPOINT =
-  "https://recipes-ocr-cpc7d8hbffahe0ad.canadacentral-01.azurewebsites.net/api/ocr";
-
-async function azureOCR(binaryBlob) {
+async function runOCR(arrayBuffer) {
   try {
-    const response = await fetch(OCR_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/octet-stream" },
-      body: binaryBlob
-    });
+    const response = await fetch(
+      "https://recipes-ocr-cpc7d8hbffahe0ad.canadacentral-01.azurewebsites.net/api/ocr",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/octet-stream" },
+        body: arrayBuffer
+      }
+    );
 
-    const raw = await response.text();
-    if (!raw) return "";
-
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (err) {
-      console.error("OCR JSON parse error:", err, "Raw:", raw);
-      return "";
-    }
-
-    return data.text || "";
+    return await response.text();
   } catch (err) {
-    console.error("Azure OCR fetch error:", err);
+    console.error("Read v3 OCR error:", err);
     return "";
   }
 }
-
 // -----------------------------
 // FILE UPLOAD HANDLER
 // -----------------------------
@@ -287,9 +275,10 @@ function readHTML(file, name, category) {
 // IMAGE OCR → RAW BINARY
 // -----------------------------
 async function readImageOCR(file, name, category) {
-  const text = await azureOCR(file);
+  const text = await runOCR(file);
   processRecipeText(text, name, category);
 }
+
 
 // -----------------------------
 // OCR CLEANUP + PARSER
