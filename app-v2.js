@@ -240,7 +240,7 @@ async function readPDF(file, name, category) {
     );
   });
 
-  const text = await azureOCR(pngBlob);
+  const text = await runOCR(pngBlob);
   processRecipeText(text, name, category);
 }
 
