@@ -243,17 +243,30 @@ CLASSIFY LINES
 function classifyLine(line) {
   const lower = line.toLowerCase().trim();
 
+  // 1. Strong signals first
   if (isDirectionLike(line)) return "direction";
-
   if (isIngredientLike(line)) return "ingredient";
 
-  if (lower.includes("directions")) return "directions-header";
-  if (lower.includes("ingredients")) return "ingredients-header";
+  // 2. Headers (already filtered, but safe)
+  if (lower.startsWith("directions")) return "header";
+  if (lower.startsWith("ingredients")) return "header";
 
-  if (/^[A-Za-z]+:/.test(line)) return "speaker";
+  // 3. Speaker lines
+  if (/^[A-Za-z]+:/.test(line.trim())) return "narrative";
 
+  // 4. Continuation page markers
+  if (lower.includes("continuation")) return "narrative";
+
+  // 5. Ingredient fragments
+  if (lower.includes("milk") || lower.includes("cream")) return "ingredient";
+
+  // 6. Direction fragments
+  if (lower.includes("until") || lower.includes("cool") || lower.includes("bake")) return "direction";
+
+  // 7. Default
   return "narrative";
 }
+
 
 /* ------------------------------------------------------------
 IMPORTER
@@ -275,18 +288,16 @@ lines = lines.filter(l => {
   // 2. Normalize units + fractions AFTER cleaning
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
-  let narrative = [];
+let narrative = [];
 let ingredients = [];
 let directions = [];
 
 for (const line of lines) {
-  if (isIngredientLike(line)) {
-    ingredients.push(line);
-  } else if (isDirectionLike(line)) {
-    directions.push(line);
-  } else {
-    narrative.push(line);
-  }
+  const type = classifyLine(line);
+
+  if (type === "ingredient") ingredients.push(line);
+  else if (type === "direction") directions.push(line);
+  else if (type === "narrative") narrative.push(line);
 }
 
   // 4. Clean direction formatting
