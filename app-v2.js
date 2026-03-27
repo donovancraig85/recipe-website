@@ -637,30 +637,25 @@ function stripVariations(line) {
 }
 
 // Remove page numbers, headers, section labels
-function isGarbage(line) {
+unction isGarbage(line) {
   const lower = line.toLowerCase().trim();
 
-  // Empty or whitespace
   if (!lower) return true;
 
-  // Page numbers or standalone numbers
+  // Standalone numbers (page numbers)
   if (/^\d{1,4}$/.test(lower)) return true;
 
   // Page headers / footers
   if (/^page\s*\d+/.test(lower)) return true;
   if (/^\d+\s*of\s*\d+/.test(lower)) return true;
 
-  // URLs, emails, copyright, publisher junk
+  // URLs, copyright, metadata
   if (/^www\./.test(lower)) return true;
   if (/^http/.test(lower)) return true;
   if (/copyright/i.test(lower)) return true;
 
-  // Generic section headers
+  // Generic section headers (universal)
   const genericHeaders = [
-    "contents",
-    "index",
-    "chapter",
-    "section",
     "narrative",
     "ingredients",
     "directions",
@@ -672,17 +667,26 @@ function isGarbage(line) {
     "variations",
     "variation",
     "continued",
-    "continued on next page"
+    "continued on next page",
+    "serves",
+    "yield",
+    "desserts",
+    "cake",
+    "syrup",
+    "frosting",
+    "topping",
+    "filling"
   ];
-
   if (genericHeaders.includes(lower)) return true;
 
-  // All-caps lines longer than 1 word (common in OCR headers)
+  // All-caps multi-word lines (common OCR headers)
   if (/^[A-Z\s]{6,}$/.test(line) && line.split(" ").length > 1) return true;
+
+  // Cookbook titles (generic rule: multi-word title case)
+  if (/^[A-Z][a-z]+(\s+[A-Z][a-z]+){2,}$/.test(line)) return true;
 
   return false;
 }
-
 // Merge broken quantity lines
 function mergeBrokenQuantities(lines) {
   const out = [];
