@@ -161,73 +161,35 @@ if (search) {
  MEDIUM-STRENGTH INGREDIENT DETECTOR
    ------------------------------------------------------------ */
 function isIngredientLike(line) {
-  const lower = line.toLowerCase().trim();
+  const l = line.toLowerCase().trim();
+  if (!l) return false;
 
-  if (!lower) return false;
+  // 1. Starts with a quantity (1, 1/2, 1 1/2, etc.)
+  if (/^\d+([\/\d\s\.]*)/.test(l)) return true;
 
-  if (/^\d+([\/\s]\d+)?/.test(lower)) return true;
-
-  if (/^[¼½¾⅐⅑⅒⅓⅔⅕⅖⅗⅘⅙⅚⅛⅜⅝⅞]/.test(lower)) return true;
-
-  if (/^\(\d/.test(lower)) return true;
-
-  if (/\d+\s?\d*\/\d*/.test(lower)) return true;
-
+  // 2. Contains a unit
   const units = [
-    "cup", "cups",
-    "teaspoon", "teaspoons", "tsp",
-    "tablespoon", "tablespoons", "tbsp",
-    "ounce", "ounces", "oz",
-    "pound", "pounds", "lb", "lbs",
-    "gram", "grams", "g",
-    "kilogram", "kilograms", "kg",
-    "milliliter", "milliliters", "ml",
-    "liter", "liters", "l",
-    "pinch", "dash"
+    "cup", "cups", "teaspoon", "teaspoons", "tsp", "tablespoon", "tablespoons",
+    "tbsp", "ounce", "ounces", "oz", "pound", "pounds", "lb", "lbs",
+    "gram", "grams", "g", "kg", "milliliter", "ml", "liter", "l",
+    "pinch", "dash", "can", "package", "pkg"
   ];
-  if (units.some(u => lower.includes(u))) return true;
+  if (units.some(u => l.includes(" " + u))) return true;
 
-  // 6. Ingredient keywords (generic)
-  const ingredientKeywords = [
-    "can ",
-    "package",
-    "pkg",
-    "clove",
-    "cloves",
-    "stick",
-    "sticks",
-    "slice",
-    "slices",
-    "fillet",
-    "fillets",
-    "breast",
-    "breasts"
+  // 3. Contains a food keyword
+  const foods = [
+    "flour", "sugar", "milk", "cream", "egg", "eggs", "vanilla",
+    "salt", "butter", "rum", "corn syrup", "baking powder",
+    "condensed", "evaporated"
   ];
-  if (ingredientKeywords.some(k => lower.includes(k))) return true;
+  if (foods.some(f => l.includes(f))) return true;
 
-  // 7. Lines that look like ingredients but lack quantity
-  //    e.g. "salt", "vanilla extract", "baking powder"
-  const commonIngredients = [
-    "salt",
-    "pepper",
-    "extract",
-    "powder",
-    "flour",
-    "sugar",
-    "milk",
-    "cream",
-    "butter",
-    "oil",
-    "vinegar",
-    "yeast",
-    "baking",
-    "corn syrup",
-    "honey"
-  ];
-  if (commonIngredients.some(k => lower.includes(k))) return true;
+  // 4. Contains parentheses with amounts
+  if (/\(\d/.test(l)) return true;
 
   return false;
 }
+
 
 function isDirectionLike(line) {
   const lower = line.toLowerCase().trim();
@@ -356,11 +318,15 @@ function processRecipePipeline_v28(rawText, name, category) {
   // 1. Clean and normalize OCR text
   let lines = normalizeOCR(rawText);
 
-  // Remove headers BEFORE detection
-  lines = lines.filter(l => l.toLowerCase() !== "directions");
-  lines = lines.filter(l => l.toLowerCase() !== "ingredients");
-  lines = lines.filter(l => l.toLowerCase() !== "narrative");
-  lines = lines.filter(l => l.toLowerCase() !== "variations:");
+// Remove headers BEFORE detection 
+const headerWords = ["ingredients", "directions", "narrative", "variations"];
+
+lines = lines.filter(l => {
+  const lower = l.toLowerCase().trim();
+
+  // Remove any line that *starts with* a header word
+  return !headerWords.some(h => lower.startsWith(h));
+});
 
   // 2. Normalize units + fractions AFTER cleaning
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
