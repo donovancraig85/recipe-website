@@ -297,6 +297,11 @@ async function readImageOCR(fileList, name, category) {
 // ------------------------------------------------------
 // PIPELINE HELPERS
 // ------------------------------------------------------
+// ------------------------------------------------------
+// v2.7.1 — FULL PIPELINE (Importer keeps step numbers)
+// ------------------------------------------------------
+
+// Normalize units BEFORE splitting
 function normalizeUnits(line) {
   return line
     .replace(/\btea\b/i, "teaspoon")
@@ -305,6 +310,7 @@ function normalizeUnits(line) {
     .replace(/\btbsp\b/i, "tablespoon");
 }
 
+// Normalize fractions BEFORE splitting
 function normalizeFractions(line) {
   return line
     .replace(/\b11\/4\b/g, "1 1/4")
@@ -313,6 +319,7 @@ function normalizeFractions(line) {
     .replace(/\b13\/4\b/g, "1 3/4");
 }
 
+// Remove ingredient comments
 function removeIngredientComments(line) {
   const triggers = [
     "delicious",
@@ -329,6 +336,7 @@ function removeIngredientComments(line) {
   return line;
 }
 
+// Remove variation garbage
 function stripVariations(line) {
   const keys = [
     "banana",
@@ -337,7 +345,9 @@ function stripVariations(line) {
     "dulce",
     "variation",
     "many restaurants",
-    "serve the cake in a bowl"
+    "serve the cake in a bowl",
+    "continued on next page",
+    "tres leches cake (continuation)"
   ];
   for (const k of keys) {
     const idx = line.toLowerCase().indexOf(k);
@@ -346,25 +356,24 @@ function stripVariations(line) {
   return line;
 }
 
+// Remove page numbers, headers, etc.
 function isGarbage(line) {
   const lower = line.toLowerCase();
   const patterns = [
     /^page\s*\d+/,
     /^\d+\s*of\s*\d+/,
     /^three guys/,
-    /^continued/,
     /^desserts$/,
     /^variations$/,
     /^cuatro/,
     /^banana/,
-    /^tres leches cake$/,
-    /^three milks cake$/,
     /^www\./,
     /^http/
   ];
   return patterns.some(p => p.test(lower));
 }
 
+// Merge broken quantity lines
 function mergeBrokenQuantities(lines) {
   const out = [];
   for (let i = 0; i < lines.length; i++) {
@@ -380,6 +389,7 @@ function mergeBrokenQuantities(lines) {
   return out;
 }
 
+// Split merged steps
 function splitSteps(line) {
   const pattern = /(\bstep\s*\d+[:.)-]*|\b\d+[:.)-])/gi;
   const matches = [...line.matchAll(pattern)];
@@ -396,6 +406,7 @@ function splitSteps(line) {
   return parts.filter(p => p.length > 0);
 }
 
+// Remove step numbers (formatter)
 function removeStepNumber(line) {
   return line
     .replace(/^\s*step\s*\d+[:.)\-\—]*\s*/i, "")
@@ -404,6 +415,7 @@ function removeStepNumber(line) {
     .trim();
 }
 
+// Strict ingredient splitting
 function splitIngredients(line) {
   const qty = /(\d+\s?\d*\/?\d*|\d+\.\d+|\(\d.*?\))/g;
   const matches = [...line.matchAll(qty)];
@@ -420,6 +432,7 @@ function splitIngredients(line) {
   return parts.filter(p => p.length > 0);
 }
 
+// Normalize OCR text
 function normalizeOCR(text) {
   let lines = text
     .replace(/\r/g, "\n")
@@ -437,7 +450,7 @@ function normalizeOCR(text) {
 }
 
 // ------------------------------------------------------
-// IMPORTER + FORMATTER PIPELINE
+// v2.7.1 IMPORTER (keeps step numbers)
 // ------------------------------------------------------
 function processRecipePipeline(rawText, name, category) {
   const cleaned = cleanText(rawText);
@@ -454,9 +467,9 @@ function processRecipePipeline(rawText, name, category) {
     /^(\d+|\d+\s?\/\s?\d+|\d+\.\d+|\d+\s?\d\/\d|\(?\d+.*\)?)\s*[a-z]/i;
 
   for (let line of lines) {
-    line = stripVariations(line);
     line = normalizeUnits(line);
     line = normalizeFractions(line);
+    line = stripVariations(line);
 
     if (line.length === 0) continue;
 
@@ -500,6 +513,9 @@ function processRecipePipeline(rawText, name, category) {
     narrative.push(line);
   }
 
+  // ------------------------------------------------------
+  // FORMATTER: remove step numbers
+  // ------------------------------------------------------
   const formattedDirections = directions.map(removeStepNumber);
 
   return {
@@ -508,10 +524,6 @@ function processRecipePipeline(rawText, name, category) {
     narrative,
     ingredients,
     directions: formattedDirections,
-    servings: "",
-    prepTime: "",
-    cookTime: "",
-    totalTime: "",
     createdAt: new Date()
   };
 }
