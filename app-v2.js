@@ -243,31 +243,33 @@ CLASSIFY LINES
 function classifyLine(line) {
   const lower = line.toLowerCase().trim();
 
-  // 1. Strong signals first
+  // 0. Hard narrative overrides
+  if (/^[A-Za-z]+:/.test(line.trim())) return "narrative"; // speaker
+  if (lower.includes("continuation")) return "narrative";
+  if (lower.startsWith("serves")) return "narrative";
+  if (lower.includes("delicious") || lower.includes("served")) return "narrative";
+  if (/[.]{3}$/.test(line.trim())) return "narrative"; // ends with ...
+  if (/\(.*\)/.test(line) && !/\(\d/.test(line)) return "narrative"; // parentheses but not measurements
+
+  // 1. Strong signals
   if (isDirectionLike(line)) return "direction";
   if (isIngredientLike(line)) return "ingredient";
 
-  // 2. Headers (already filtered, but safe)
+  // 2. Headers (safety)
   if (lower.startsWith("directions")) return "header";
   if (lower.startsWith("ingredients")) return "header";
 
-  // 3. Speaker lines
-  if (/^[A-Za-z]+:/.test(line.trim())) return "narrative";
-
-  // 4. Continuation page markers
-  if (lower.includes("continuation")) return "narrative";
-
-  // 5. Ingredient fragments — ONLY if not narrative-like
+  // 3. Ingredient fragments (only if not narrative-like)
   if (
     (lower.includes("milk") || lower.includes("cream")) &&
-    !/^[A-Za-z]+:/.test(line.trim()) &&   // not a speaker
-    !lower.includes("served") &&          // narrative clue
-    !lower.includes("delicious")          // narrative clue
+    !lower.includes("delicious") &&
+    !lower.includes("served") &&
+    !/^[A-Za-z]+:/.test(line.trim())
   ) {
     return "ingredient";
   }
 
-  // 6. Direction fragments — ONLY if not ingredient-like
+  // 4. Direction fragments (only if not ingredient-like)
   if (
     (lower.includes("until") || lower.includes("cool") || lower.includes("bake")) &&
     !lower.includes("milk") &&
@@ -276,7 +278,7 @@ function classifyLine(line) {
     return "direction";
   }
 
-  // 7. Default
+  // 5. Default
   return "narrative";
 }
 
