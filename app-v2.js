@@ -272,7 +272,7 @@ function isDirectionLike(line) {
 
   return false;
 }
-}
+
 
 
 /* ------------------------------------------------------------
