@@ -540,24 +540,49 @@ function stripVariations(line) {
 
 // Remove page numbers, headers, section labels
 function isGarbage(line) {
-  const lower = line.toLowerCase();
-  const patterns = [
-    /^page\s*\d+/,
-    /^\d+\s*of\s*\d+/,
-    /^three guys/,
-    /^desserts$/,
-    /^variations$/,
-    /^(cake|syrup|frosting|topping|filling|glaze)$/i,
-    /^\d{3}$/,        // page numbers like 210, 211, 212, 213
-    /^www\./,
-    /^http/
-  ];
-  return patterns.some(p => p.test(lower));
-}
+  const lower = line.toLowerCase().trim();
 
-// Detect speaker lines (keep as narrative)
-function isSpeakerLine(line) {
-  return /^[A-Za-z]+:/.test(line);   // Raúl:, Jorge:, Glenn:
+  // Empty or whitespace
+  if (!lower) return true;
+
+  // Page numbers or standalone numbers
+  if (/^\d{1,4}$/.test(lower)) return true;
+
+  // Page headers / footers
+  if (/^page\s*\d+/.test(lower)) return true;
+  if (/^\d+\s*of\s*\d+/.test(lower)) return true;
+
+  // URLs, emails, copyright, publisher junk
+  if (/^www\./.test(lower)) return true;
+  if (/^http/.test(lower)) return true;
+  if (/copyright/i.test(lower)) return true;
+
+  // Generic section headers
+  const genericHeaders = [
+    "contents",
+    "index",
+    "chapter",
+    "section",
+    "narrative",
+    "ingredients",
+    "directions",
+    "instructions",
+    "method",
+    "steps",
+    "notes",
+    "tips",
+    "variations",
+    "variation",
+    "continued",
+    "continued on next page"
+  ];
+
+  if (genericHeaders.includes(lower)) return true;
+
+  // All-caps lines longer than 1 word (common in OCR headers)
+  if (/^[A-Z\s]{6,}$/.test(line) && line.split(" ").length > 1) return true;
+
+  return false;
 }
 
 // Merge broken quantity lines
