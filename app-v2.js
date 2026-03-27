@@ -314,56 +314,39 @@ SPLIT INTO TWO COLUMNS
 function splitColumns(lines) {
   const left = [];
   const right = [];
-  let inDirections = false;
 
   for (const line of lines) {
-    const type = classifyLine(line);
-
-    if (type === "directions-header") {
-      inDirections = true;
-      continue;
-    }
-
-    if (inDirections) {
+    if (isIngredientLike(line)) {
       left.push(line);
-      continue;
-    }
-
-    if (type === "speaker" || type === "narrative") {
-      left.push(line);
-      continue;
-    }
-
-    if (type === "ingredient") {
+    } else if (isDirectionLike(line)) {
       right.push(line);
-      continue;
+    } else {
+      // narrative or speaker lines go left
+      left.push(line);
     }
   }
 
   return { left, right };
 }
-
 /* ------------------------------------------------------------
  REBUILD PAGE
    ------------------------------------------------------------ */
 function rebuildPage(columns) {
-  const narrative = [...columns.left];
-  const ingredients = [...columns.right];
+  const narrative = [];
+  const ingredients = [];
   const directions = [];
 
-  let inDirections = false;
-
   for (const line of columns.left) {
-    if (classifyLine(line) === "directions-header") {
-      inDirections = true;
-      continue;
-    }
-    if (inDirections) directions.push(line);
+    if (isIngredientLike(line)) ingredients.push(line);
+    else narrative.push(line);
+  }
+
+  for (const line of columns.right) {
+    if (isDirectionLike(line)) directions.push(line);
   }
 
   return { narrative, ingredients, directions };
 }
-
 /* ------------------------------------------------------------
 IMPORTER
    ------------------------------------------------------------ */
