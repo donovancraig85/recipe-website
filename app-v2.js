@@ -304,9 +304,10 @@ function detectTwoColumnLayout(lines) {
     if (isDirectionLike(line)) directionCount++;
   }
 
-  // Lower threshold for direction count
-  return ingredientCount > 5 && directionCount > 1;
+  // If both appear anywhere in the text, assume two-column layout
+  return ingredientCount > 5 && directionCount > 5;
 }
+
 
 /* ------------------------------------------------------------
 SPLIT INTO TWO COLUMNS
@@ -354,6 +355,12 @@ function processRecipePipeline_v28(rawText, name, category) {
   // 1. Clean and normalize OCR text
   let lines = normalizeOCR(rawText);
 
+  // Remove headers BEFORE detection
+  lines = lines.filter(l => l.toLowerCase() !== "directions");
+  lines = lines.filter(l => l.toLowerCase() !== "ingredients");
+  lines = lines.filter(l => l.toLowerCase() !== "narrative");
+  lines = lines.filter(l => l.toLowerCase() !== "variations:");
+
   // 2. Normalize units + fractions AFTER cleaning
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
@@ -371,7 +378,6 @@ function processRecipePipeline_v28(rawText, name, category) {
     ingredients = rebuilt.ingredients;
     directions = rebuilt.directions;
   } else {
-    // Single-column fallback
     narrative = lines;
   }
 
