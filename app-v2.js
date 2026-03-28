@@ -240,7 +240,7 @@ function isDirectionLike(line) {
 /* ------------------------------------------------------------
 CLASSIFY LINES
    ------------------------------------------------------------ */
-function classifyLine(line) {
+function classifyLine_v30(line) {
   const lower = line.toLowerCase().trim();
 
   // ------------------------------------------------------------
@@ -332,39 +332,41 @@ function classifyLine(line) {
   // ------------------------------------------------------------
   return "narrative";
 }
+
 /* ------------------------------------------------------------
 IMPORTER
    ------------------------------------------------------------ */
-function processRecipePipeline_v28(rawText, name, category) {
-  // 1. Clean and normalize OCR text
+function processRecipePipeline_v30(rawText, name, category) {
+  // 1. Normalize OCR
   let lines = normalizeOCR(rawText);
 
-// Remove headers BEFORE detection 
-const headerWords = ["ingredients", "directions", "narrative", "variations"];
+  // 2. Remove headers BEFORE classification
+  const headerWords = ["ingredients", "directions", "narrative", "variations"];
+  lines = lines.filter(l => {
+    const lower = l.toLowerCase().trim();
+    return !headerWords.some(h => lower.startsWith(h));
+  });
 
-lines = lines.filter(l => {
-  const lower = l.toLowerCase().trim();
+  // 3. Remove exact duplicate lines (OCR glitch cleanup)
+  lines = [...new Set(lines)];
 
-  // Remove any line that *starts with* a header word
-  return !headerWords.some(h => lower.startsWith(h));
-});
-
-  // 2. Normalize units + fractions AFTER cleaning
+  // 4. Normalize units + fractions
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
-let narrative = [];
-let ingredients = [];
-let directions = [];
+  // 5. Classify each line
+  let narrative = [];
+  let ingredients = [];
+  let directions = [];
 
-for (const line of lines) {
-  const type = classifyLine(line);
+  for (const line of lines) {
+    const type = classifyLine_v30(line);
 
-  if (type === "ingredient") ingredients.push(line);
-  else if (type === "direction") directions.push(line);
-  else if (type === "narrative") narrative.push(line);
-}
+    if (type === "ingredient") ingredients.push(line);
+    else if (type === "direction") directions.push(line);
+    else if (type === "narrative") narrative.push(line);
+  }
 
-  // 4. Clean direction formatting
+  // 6. Clean direction numbering
   directions = directions.map(d =>
     d.replace(/^\d+[:.)-]*\s*/, "").trim()
   );
