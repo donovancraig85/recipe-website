@@ -336,7 +336,7 @@ function classifyLine_v30(line) {
 /* ------------------------------------------------------------
 IMPORTER
    ------------------------------------------------------------ */
-function processRecipePipeline_v40(rawText, name, category) {
+function processRecipePipeline_v30(rawText, name, category) {
   // 1. Normalize OCR/PDF text
   let lines = normalizeOCR(rawText);
 
@@ -407,6 +407,44 @@ function processRecipePipeline_v40(rawText, name, category) {
 
       // If line is not ingredient-like, treat as narrative spillover
       narrative.push(line);
+      continue;
+    }
+
+    if (section === "directions") {
+      // Direction-like lines
+      if (isDirectionLike(line) || /^\d+[\.\)]/.test(lower)) {
+        directions.push(line);
+        continue;
+      }
+
+      // If line is blank, skip
+      if (!line.trim()) continue;
+
+      // Otherwise treat as narrative spillover
+      narrative.push(line);
+      continue;
+    }
+
+    // Default: narrative
+    narrative.push(line);
+  }
+
+  // 5. Clean direction numbering
+  directions = directions.map(d =>
+    d.replace(/^\d+[:.)-]*\s*/, "").trim()
+  );
+
+  return {
+    name,
+    category,
+    narrative,
+    ingredients,
+    directions,
+    createdAt: new Date()
+  };
+}
+
+
       continue/* ------------------------------------------------------------
 WRAPPER 
    ------------------------------------------------------------ */
