@@ -337,23 +337,31 @@ function classifyLine_v30(line) {
 IMPORTER
    ------------------------------------------------------------ */
 function processRecipePipeline_v30(rawText, name, category) {
-  // 1. Normalize OCR/PDF text
   let lines = normalizeOCR(rawText);
 
-  // 2. Remove obvious junk (page numbers, headers, footers)
+  // Remove obvious junk
   const junkPatterns = [
     /^\s*page\b/i,
-    /^\s*\d+\s*$/,       // standalone page numbers
+    /^\s*\d+\s*$/,
     /copyright/i,
     /all rights reserved/i
   ];
 
   lines = lines.filter(l => !junkPatterns.some(p => p.test(l)));
 
-  // 3. Normalize units + fractions
+  // Normalize units + fractions
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
-  // 4. Detect sections GENERICALLY
+  // Bulletproof section detection
+  const isIngredientsHeader = (lower) =>
+    lower.replace(/[^a-z]/g, "").includes("ingredients");
+
+  const isDirectionsHeader = (lower) =>
+    lower.replace(/[^a-z]/g, "").includes("directions");
+
+  const isVariationsHeader = (lower) =>
+    lower.replace(/[^a-z]/g, "").includes("variations");
+
   let section = "narrative";
   let narrative = [];
   let ingredients = [];
@@ -362,74 +370,40 @@ function processRecipePipeline_v30(rawText, name, category) {
   for (let line of lines) {
     const lower = line.toLowerCase().trim();
 
-    // --- SECTION SWITCHING (GENERIC) ---
-
-    // Ingredients section detection
-    if (/^ingredients\b/i.test(lower)) {
+    // Switch to INGREDIENTS
+    if (isIngredientsHeader(lower)) {
       section = "ingredients";
       continue;
     }
 
-    // Directions section detection
-    if (/^directions\b/i.test(lower)) {
+    // Switch to DIRECTIONS
+    if (isDirectionsHeader(lower) || /^\d+[\.\)]/.test(lower)) {
       section = "directions";
-      continue;
+      // keep numbered steps
     }
 
-    // Numbered steps ALWAYS indicate directions
-    if (/^\d+[\.\)]\s+/.test(lower)) {
-      section = "directions";
-    }
-
-    // Variations or notes return to narrative
-    if (/^variations?\b/i.test(lower) || /^notes?\b/i.test(lower)) {
+    // Switch to narrative for variations/continuation
+    if (isVariationsHeader(lower) || lower.includes("continuation")) {
       section = "narrative";
       continue;
     }
 
-    // --- ROUTING ---
-
+    // Route lines
     if (section === "ingredients") {
-      // Ingredient-like lines
-      if (isIngredientLike(line)) {
-        ingredients.push(line);
-        continue;
-      }
-
-      // Subsection headers inside ingredients (Cake, Syrup, Frosting)
-      if (/^[A-Za-z ]+$/.test(line.trim()) && line.trim().length < 40) {
-        ingredients.push(line);
-        continue;
-      }
-
-      // If line is blank, skip
-      if (!line.trim()) continue;
-
-      // If line is not ingredient-like, treat as narrative spillover
-      narrative.push(line);
+      if (line.trim()) ingredients.push(line);
       continue;
     }
 
     if (section === "directions") {
-      // Direction-like lines
-      if (isDirectionLike(line) || /^\d+[\.\)]/.test(lower)) {
-        directions.push(line);
-        continue;
-      }
-
-      // If line is blank, skip
-      if (!line.trim()) continue;
-
-      // Otherwise treat as narrative spillover
-      narrative.push(line);
+      if (line.trim()) directions.push(line);
       continue;
     }
 
     // Default: narrative
-    narrative.push(line);
+    if (line.trim()) narrative.push(line);
   }
 
-  // 5. Clean direction numbering
+  // Clean direction numbering
   directions = directions.map(d =>
     d.replace(/^\d+[:.)-]*\s*/, "").trim()
   );
@@ -442,10 +416,6 @@ function processRecipePipeline_v30(rawText, name, category) {
     directions,
     createdAt: new Date()
   };
-}
-
-function processRecipePipeline(rawText, name, category) {
-  return processRecipePipeline_v30(rawText, name, category);
 }
 
 // ------------------------------------------------------
