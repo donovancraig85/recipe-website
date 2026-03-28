@@ -444,10 +444,6 @@ function processRecipePipeline_v30(rawText, name, category) {
   };
 }
 
-
-      continue/* ------------------------------------------------------------
-WRAPPER 
-   ------------------------------------------------------------ */
 function processRecipePipeline(rawText, name, category) {
   return processRecipePipeline_v30(rawText, name, category);
 }
