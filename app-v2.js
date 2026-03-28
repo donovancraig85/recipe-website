@@ -339,28 +339,25 @@ IMPORTER
 function processRecipePipeline_v30(rawText, name, category) {
   let lines = normalizeOCR(rawText);
 
-  // Remove obvious junk
+  // Remove junk
   const junkPatterns = [
     /^\s*page\b/i,
     /^\s*\d+\s*$/,
     /copyright/i,
     /all rights reserved/i
   ];
-
   lines = lines.filter(l => !junkPatterns.some(p => p.test(l)));
 
   // Normalize units + fractions
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
-  // Bulletproof section detection
-  const isIngredientsHeader = (lower) =>
-    lower.replace(/[^a-z]/g, "").includes("ingredients");
-
-  const isDirectionsHeader = (lower) =>
-    lower.replace(/[^a-z]/g, "").includes("directions");
-
-  const isVariationsHeader = (lower) =>
-    lower.replace(/[^a-z]/g, "").includes("variations");
+  // Bulletproof header normalization
+  const normalizeHeader = (str) =>
+    str
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u200B-\u200D\uFEFF]/g, "")
+      .replace(/[^a-z]/g, "");
 
   let section = "narrative";
   let narrative = [];
@@ -368,27 +365,25 @@ function processRecipePipeline_v30(rawText, name, category) {
   let directions = [];
 
   for (let line of lines) {
-    const lower = line.toLowerCase().trim();
+    const header = normalizeHeader(line);
 
-    // Switch to INGREDIENTS
-    if (isIngredientsHeader(lower)) {
+    // Section switching
+    if (header === "ingredients") {
       section = "ingredients";
       continue;
     }
 
-    // Switch to DIRECTIONS
-    if (isDirectionsHeader(lower) || /^\d+[\.\)]/.test(lower)) {
+    if (header === "directions" || /^\d+[\.\)]/.test(line.trim())) {
       section = "directions";
       // keep numbered steps
     }
 
-    // Switch to narrative for variations/continuation
-    if (isVariationsHeader(lower) || lower.includes("continuation")) {
+    if (header === "variations" || header === "continuation") {
       section = "narrative";
       continue;
     }
 
-    // Route lines
+    // Routing
     if (section === "ingredients") {
       if (line.trim()) ingredients.push(line);
       continue;
@@ -399,7 +394,6 @@ function processRecipePipeline_v30(rawText, name, category) {
       continue;
     }
 
-    // Default: narrative
     if (line.trim()) narrative.push(line);
   }
 
