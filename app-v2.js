@@ -337,16 +337,14 @@ function classifyLine_v30(line) {
 IMPORTER
    ------------------------------------------------------------ */
 function processRecipePipeline_v30(rawText, name, category) {
-  // 1. Normalize OCR/PDF text
   let lines = normalizeOCR(rawText);
 
-  // 2. Remove PDF headers/footers
+  // Remove PDF headers/footers
   const junk = [
     "THREE GUYS FROM MIAMI",
     "DESSERTS",
     "PageHeader",
-    "PageNumber",
-    "continued on next page"
+    "PageNumber"
   ];
 
   lines = lines.filter(l => {
@@ -354,10 +352,10 @@ function processRecipePipeline_v30(rawText, name, category) {
     return !junk.some(j => lower.includes(j.toLowerCase()));
   });
 
-  // 3. Normalize units + fractions
+  // Normalize units + fractions
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
-  // 4. SECTION DETECTION (the key fix)
+  // SECTION DETECTION (fixed)
   let section = "narrative";
   let narrative = [];
   let ingredients = [];
@@ -366,25 +364,25 @@ function processRecipePipeline_v30(rawText, name, category) {
   for (let line of lines) {
     const lower = line.toLowerCase().trim();
 
-    // Switch sections based on explicit headers
-    if (lower.startsWith("ingredients")) {
+    // Switch to INGREDIENTS when the word appears anywhere
+    if (lower.includes("ingredients")) {
       section = "ingredients";
       continue;
     }
-    if (/^\d+\./.test(lower)) {
+
+    // Switch to DIRECTIONS when the word appears OR when a numbered step begins
+    if (lower.includes("directions") || /^\d+\./.test(lower)) {
       section = "directions";
-      // keep the line (it's step 1)
+      // keep the line if it's a step
     }
-    if (lower.startsWith("tres leches cake (continuation)")) {
-      section = "narrative";
-      continue;
-    }
-    if (lower.startsWith("variations")) {
+
+    // Switch back to narrative for continuation/variations
+    if (lower.includes("continuation") || lower.includes("variations")) {
       section = "narrative";
       continue;
     }
 
-    // Route lines based on section
+    // Route lines
     if (section === "narrative") {
       narrative.push(line);
     } else if (section === "ingredients") {
@@ -394,7 +392,7 @@ function processRecipePipeline_v30(rawText, name, category) {
     }
   }
 
-  // 5. Clean direction numbering
+  // Clean direction numbering
   directions = directions.map(d =>
     d.replace(/^\d+[:.)-]*\s*/, "").trim()
   );
