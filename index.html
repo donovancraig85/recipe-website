@@ -7,6 +7,8 @@
 
   <!-- DOCX support -->
   <script src="https://unpkg.com/mammoth/mammoth.browser.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 </head>
 
 <body>
@@ -74,12 +76,15 @@
 
   </div>
 
-<!-- PDF.js v3.x (must load BEFORE app.js, but AFTER body) -->
+<!-- PDF.js v3.x -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 </script>
+
+<!-- Tesseract.js MUST load before app-v2.js -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -87,6 +92,7 @@
 
 <script src="firebase-init.js"></script>
 <script src="app-v2.js"></script>
+
 
 </body>
 </html>

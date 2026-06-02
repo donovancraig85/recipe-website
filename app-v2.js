@@ -240,7 +240,7 @@ function isDirectionLike(line) {
 /* ------------------------------------------------------------
 CLASSIFY LINES
    ------------------------------------------------------------ */
-function classifyLine_v30(line) {
+function classifyLine(line) {
   const lower = line.toLowerCase().trim();
 
   // ------------------------------------------------------------
@@ -825,7 +825,7 @@ function normalizeOCR(text) {
 // WRAPPER
 // ------------------------------------------------------
 function processRecipePipeline(rawText, name, category) {
-  return processRecipePipeline_v30(rawText, name, category);
+  return processRecipePipeline(rawText, name, category);
 }
 
 // ------------------------------------------------------
