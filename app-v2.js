@@ -799,18 +799,20 @@ function normalizeOCR(text) {
   // ------------------------------------------------------------
   // 3. REMOVE GENERIC GARBAGE LINES
   // ------------------------------------------------------------
-  const garbagePatterns = [
-    /^=+$/, /^-+$/, /^[~`]+$/,          // pure symbols
-    /^[()]+$/, /^[
+const garbagePatterns = [
+  /^=+$/, /^-+$/, /^[~`]+$/,          // pure symbols
+  new RegExp("^[()\
 
-\[\]
+\[\\]
 
-]+$/,             // brackets only
-    /^\d{1,4}$/,                         // standalone numbers
-    /^page\s*\d+/i,                      // Page 12
-    /^\d+\s*of\s*\d+/i,                  // 3 of 10
-    /^[A-Z\s]{6,}$/                      // ALL CAPS headers
-  ];
+]+$"),        // brackets only (unbreakable)
+  /^\d{1,4}$/,                        // standalone numbers
+  /^page\\s*\\d+/i,                   // Page 12
+  /^\\d+\\s*of\\s*\\d+/i,             // 3 of 10
+  /^[A-Z\\s]{6,}$/                    // ALL CAPS headers
+];
+
+
 
   lines = lines.filter(l => !garbagePatterns.some(p => p.test(l)));
 
