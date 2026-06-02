@@ -336,23 +336,26 @@ function classifyLine_v30(line) {
 /* ------------------------------------------------------------
 IMPORTER
    ------------------------------------------------------------ */
-function processRecipePipeline_v51(rawText, name, category) {
-  // 1. Normalize OCR/PDF text
+/* ------------------------------------------------------------
+IMPORTER (v51 — Clean Rewrite)
+------------------------------------------------------------ */
+function processRecipePipeline(rawText, name, category) {
+  // Normalize OCR/PDF text into lines
   let lines = normalizeOCR(rawText);
 
-  // 2. Remove obvious junk
+  // Remove obvious junk (page numbers, headers, footers)
   const junkPatterns = [
     /^\s*page\b/i,
-    /^\s*\d+\s*$/, 
+    /^\s*\d+\s*$/,
     /copyright/i,
     /all rights reserved/i
   ];
-  lines = lines.filter(l => !junkPatterns.some(p => p.test(l)));
+  lines = lines.filter(line => !junkPatterns.some(p => p.test(line)));
 
-  // 3. Normalize units + fractions
-  lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
+  // Normalize units + fractions
+  lines = lines.map(line => normalizeUnits(normalizeFractions(line)));
 
-  // 4. Bulletproof header normalization
+  // Normalize headers (Ingredients, Directions, Variations)
   const normalizeHeader = (str) =>
     str
       .toLowerCase()
@@ -360,7 +363,7 @@ function processRecipePipeline_v51(rawText, name, category) {
       .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width chars
       .replace(/[^a-z]/g, "");               // strip punctuation/spaces
 
-  // 5. Ingredient-like line detection (generic)
+  // Ingredient-like line detection
   const isIngredientLine = (line) => {
     const lower = line.toLowerCase();
     return (
@@ -369,7 +372,7 @@ function processRecipePipeline_v51(rawText, name, category) {
     );
   };
 
-  // 6. Direction-like line detection (generic)
+  // Direction-like line detection
   const isDirectionLine = (line) => {
     const lower = line.toLowerCase();
     return (
@@ -378,17 +381,18 @@ function processRecipePipeline_v51(rawText, name, category) {
     );
   };
 
-  // 7. Section routing
+  // Output buckets
   let section = "narrative";
   let narrative = [];
   let ingredients = [];
   let directions = [];
 
+  // Main classification loop
   for (let line of lines) {
     const header = normalizeHeader(line);
     const lower = line.toLowerCase().trim();
 
-    // --- SECTION SWITCHING ---
+    // SECTION HEADERS
     if (header === "ingredients") {
       section = "ingredients";
       continue;
@@ -404,20 +408,18 @@ function processRecipePipeline_v51(rawText, name, category) {
       continue;
     }
 
-    // --- COLUMN‑AGNOSTIC OVERRIDES ---
-    // ⭐ Ingredient-like lines ALWAYS go to ingredients
+    // COLUMN-AGNOSTIC OVERRIDES
     if (isIngredientLine(line)) {
       ingredients.push(line);
       continue;
     }
 
-    // ⭐ Direction-like lines ALWAYS go to directions
     if (isDirectionLine(line)) {
       directions.push(line);
       continue;
     }
 
-    // --- ROUTING BASED ON SECTION ---
+    // ROUTING BASED ON CURRENT SECTION
     if (section === "ingredients") {
       if (line.trim()) ingredients.push(line);
       continue;
@@ -428,11 +430,11 @@ function processRecipePipeline_v51(rawText, name, category) {
       continue;
     }
 
-    // Default: narrative
+    // DEFAULT → narrative
     if (line.trim()) narrative.push(line);
   }
 
-  // 8. Clean direction numbering
+  // Clean direction numbering
   directions = directions.map(d =>
     d.replace(/^\d+[:.)-]*\s*/, "").trim()
   );
@@ -447,30 +449,27 @@ function processRecipePipeline_v51(rawText, name, category) {
   };
 }
 
-// ------------------------------------------------------
-// OCR ENGINE
-// ------------------------------------------------------
-async function runOCR(arrayBuffer) {
+/* ------------------------------------------------------
+   OCR ENGINE (Tesseract.js)
+------------------------------------------------------ */
+async function runOCR(imageBlob) {
   try {
-    const response = await fetch(
-      "https://recipes-ocr-cpc7d8hbffahe0ad.canadacentral-01.azurewebsites.net/api/ocr",
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/octet-stream" },
-        body: arrayBuffer
-      }
+    const { data: { text } } = await Tesseract.recognize(
+      imageBlob,
+      "eng",
+      { logger: m => console.log(m) }
     );
-
-    return await response.text();
+    return text;
   } catch (err) {
-    console.error("Read v3 OCR error:", err);
+    console.error("Tesseract OCR error:", err);
     return "";
   }
 }
 
-// ------------------------------------------------------
-// FILE UPLOAD HANDLER
-// ------------------------------------------------------
+
+/* ------------------------------------------------------
+   FILE UPLOAD HANDLER
+------------------------------------------------------ */
 const fileInput = document.getElementById("recipe-file");
 const uploadbtn = document.getElementById("upload-btn");
 const uploadName = document.getElementById("upload-name");
@@ -486,12 +485,13 @@ if (uploadbtn) {
     if (!category) return alert("Please select a category.");
     if (!files.length) return alert("Please select a file first.");
 
-    const ext = files[0].name.toLowerCase().split(".").pop() || "";
+    const file = files[0];
+    const ext = file.name.toLowerCase().split(".").pop();
 
-    if (ext === "txt") return readTextFile(files[0], name, category);
-    if (ext === "pdf") return readPDF(files[0], name, category);
-    if (ext === "docx") return readDocx(files[0], name, category);
-    if (ext === "html" || ext === "htm") return readHTML(files[0], name, category);
+    if (ext === "txt") return readTextFile(file, name, category);
+    if (ext === "pdf") return readPDF(file, name, category);
+    if (ext === "docx") return readDocx(file, name, category);
+    if (ext === "html" || ext === "htm") return readHTML(file, name, category);
 
     if (["png", "jpg", "jpeg", "webp", "gif"].includes(ext))
       return readImageOCR(files, name, category);
@@ -500,18 +500,35 @@ if (uploadbtn) {
   });
 }
 
-// ------------------------------------------------------
-// TEXT FILE
-// ------------------------------------------------------
+
+/* ------------------------------------------------------
+   TEXT FILE
+------------------------------------------------------ */
 function readTextFile(file, name, category) {
   const reader = new FileReader();
   reader.onload = () => handleImportedText(reader.result, name, category);
   reader.readAsText(file);
 }
 
-// ------------------------------------------------------
-// PDF → PNG → OCR
-// ------------------------------------------------------
+
+/* ------------------------------------------------------
+   IMAGE → OCR
+------------------------------------------------------ */
+async function readImageOCR(fileList, name, category) {
+  let fullText = "";
+
+  for (const file of fileList) {
+    const text = await runOCR(file);
+    fullText += "\n" + text;
+  }
+
+  handleImportedText(fullText, name, category);
+}
+
+
+/* ------------------------------------------------------
+   PDF → CANVAS → PNG → OCR
+------------------------------------------------------ */
 async function readPDF(file, name, category) {
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -532,7 +549,7 @@ async function readPDF(file, name, category) {
 
     const pngBlob = await new Promise((resolve, reject) => {
       canvas.toBlob(
-        blob => (blob ? resolve(blob) : reject(new Error("Failed to create PNG blob"))),
+        blob => blob ? resolve(blob) : reject("Canvas → PNG failed"),
         "image/png",
         1.0
       );
@@ -545,9 +562,10 @@ async function readPDF(file, name, category) {
   handleImportedText(fullText, name, category);
 }
 
-// ------------------------------------------------------
-// DOCX FILE
-// ------------------------------------------------------
+
+/* ------------------------------------------------------
+   DOCX FILE
+------------------------------------------------------ */
 function readDocx(file, name, category) {
   const reader = new FileReader();
   reader.onload = async () => {
@@ -559,9 +577,10 @@ function readDocx(file, name, category) {
   reader.readAsArrayBuffer(file);
 }
 
-// ------------------------------------------------------
-// HTML FILE
-// ------------------------------------------------------
+
+/* ------------------------------------------------------
+   HTML FILE
+------------------------------------------------------ */
 function readHTML(file, name, category) {
   const reader = new FileReader();
   reader.onload = () => {
@@ -571,7 +590,6 @@ function readHTML(file, name, category) {
   };
   reader.readAsText(file);
 }
-
 // ------------------------------------------------------
 // MULTI‑IMAGE OCR
 // ------------------------------------------------------
