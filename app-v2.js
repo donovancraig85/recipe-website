@@ -774,75 +774,81 @@ function splitIngredients(line) {
 }
 
 function normalizeOCR(text) {
-  // ------------------------------------------------------------
-  // 1. FORCE LINE BREAKS INTO RAW OCR BLOBS
-  // ------------------------------------------------------------
-  text = text.replace(/([a-z])([A-Z])/g, "$1\n$2");      // aA → a\nA
-  text = text.replace(/([.!?])\s+/g, "$1\n");            // punctuation → newline
-  text = text.replace(/([A-Za-z])(\d)/g, "$1\n$2");      // A1 → A\n1
-  text = text.replace(/(\d)([A-Za-z])/g, "$1\n$2");      // 1A → 1\nA
-  text = text.replace(/\s{3,}/g, "\n");                  // long spaces → newline
-  text = text.replace(/\|/g, "\n");                      // ASCII pipe only
+  if (typeof text !== "string") return "";
 
-  // ------------------------------------------------------------
-  // 2. BASIC CLEANUP
-  // ------------------------------------------------------------
-  let lines = text
-    .replace(/\r/g, "\n")
-    .replace(/\u00A0/g, " ")
-    .replace(/[ ]{2,}/g, " ")
-    .replace(/\t+/g, " ")
-    .split("\n")
-    .map(l => l.trim())
-    .filter(l => l.length > 0);
+  let result = text;
 
-  // ------------------------------------------------------------
-  // 3. REMOVE GENERIC GARBAGE LINES
-  // ------------------------------------------------------------
-const garbagePatterns = [
-  /^=+$/, /^-+$/, /^[~`]+$/,          // pure symbols
-  new RegExp("^[()\
+  // ── 1. Normalize line endings ────────────────────────────────────────────
+  result = result.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-\[\\]
+  // ── 2. Remove null bytes and other non-printable control characters ──────
+  //       Keep: tab (0x09), newline (0x0A)
+  result = result.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "");
 
-]+$"),        // brackets only (unbreakable)
-  /^\d{1,4}$/,                        // standalone numbers
-  /^page\\s*\\d+/i,                   // Page 12
-  /^\\d+\\s*of\\s*\\d+/i,             // 3 of 10
-  /^[A-Z\\s]{6,}$/                    // ALL CAPS headers
-];
+  // ── 3. Normalize Unicode lookalikes / OCR substitution errors ────────────
+  //       Cyrillic / Greek letters often confused with Latin
+  result = result
+    .replace(/\u0410/g, "A") // Cyrillic А → A
+    .replace(/\u0412/g, "B") // Cyrillic В → B
+    .replace(/\u0421/g, "C") // Cyrillic С → C
+    .replace(/\u0415/g, "E") // Cyrillic Е → E
+    .replace(/\u041C/g, "M") // Cyrillic М → M
+    .replace(/\u041E/g, "O") // Cyrillic О → O
+    .replace(/\u0420/g, "R") // Cyrillic Р → R
+    .replace(/\u0422/g, "T") // Cyrillic Т → T
+    .replace(/\u0425/g, "X") // Cyrillic Х → X
+    .replace(/\u0430/g, "a") // Cyrillic а → a
+    .replace(/\u0441/g, "c") // Cyrillic с → c
+    .replace(/\u0435/g, "e") // Cyrillic е → e
+    .replace(/\u043E/g, "o") // Cyrillic о → o
+    .replace(/\u0440/g, "p") // Cyrillic р → p
+    .replace(/\u0445/g, "x") // Cyrillic х → x
+    .replace(/\u03BF/g, "o") // Greek ο → o
+    .replace(/\u03C1/g, "p") // Greek ρ → p
+    .replace(/\u03B1/g, "a") // Greek α → a
+    .replace(/\u0406/g, "I") // Ukrainian І → I
+    .replace(/\u0456/g, "i"); // Ukrainian і → i
 
+  // ── 4. Common single-character OCR digit / letter confusions ────────────
+  result = result
+    .replace(/(?<=[A-Za-z])0(?=[A-Za-z])/g, "O") // digit 0 between letters → O
+    .replace(/(?<=[A-Za-z])1(?=[A-Za-z])/g, "l") // digit 1 between letters → l
+    .replace(/\|(?=[A-Za-z])/g, "I")              // pipe at word start → I
+    .replace(/(?<=[A-Za-z])\|/g, "l");            // pipe after letter → l
 
+  // ── 5. Fix ligature / special character artifacts ────────────────────────
+  result = result
+    .replace(/\uFB01/g, "fi")
+    .replace(/\uFB02/g, "fl")
+    .replace(/\uFB00/g, "ff")
+    .replace(/\uFB03/g, "ffi")
+    .replace(/\uFB04/g, "ffl")
+    .replace(/\u2019/g, "'")        // right single quotation mark
+    .replace(/[\u2018\u201B]/g, "'") // left/reversed single quote
+    .replace(/[\u201C\u201D\u201E\u201F]/g, '"') // curly double quotes
+    .replace(/\u2013/g, "-")        // en dash
+    .replace(/\u2014/g, "--")       // em dash
+    .replace(/\u2026/g, "...")      // ellipsis character
+    .replace(/\u00A0/g, " ");       // non-breaking space
 
-  lines = lines.filter(l => !garbagePatterns.some(p => p.test(l)));
+  // ── 6. Remove repeated punctuation artifacts ─────────────────────────────
+  result = result
+    .replace(/\.{4,}/g, "...")   // four or more dots → ellipsis
+    .replace(/-{3,}/g, "--")     // three or more hyphens → em-dash equivalent
+    .replace(/_{3,}/g, "___")    // excess underscores → three
+    .replace(/\*{3,}/g, "***");  // excess asterisks → three
 
-  // ------------------------------------------------------------
-  // 4. REMOVE OCR ARTIFACTS (generic)
-  // ------------------------------------------------------------
-  lines = lines.filter(l =>
-    !/^[=~\-_]{1,10}$/.test(l) &&
-    !/^[=~\-_]{1,10}\s*[=~\-_]{1,10}$/.test(l) &&
-    !/^[A-Za-z]{1,2}\s*[=~\-_]{1,5}$/.test(l)
-  );
+  // ── 7. Normalize whitespace ───────────────────────────────────────────────
+  result = result
+    .replace(/[^\S\n]+/g, " ")   // multiple spaces/tabs on same line → single space
+    .replace(/ +\n/g, "\n")      // trailing spaces before newline
+    .replace(/\n +/g, "\n")      // leading spaces after newline
+    .replace(/\n{3,}/g, "\n\n"); // three or more blank lines → two
 
-  // ------------------------------------------------------------
-  // 5. MERGE BROKEN QUANTITY LINES
-  // ------------------------------------------------------------
-  const merged = [];
-  for (let i = 0; i < lines.length; i++) {
-    const curr = lines[i];
-    const next = lines[i + 1] || "";
+  // ── 8. Trim leading / trailing whitespace ────────────────────────────────
+  result = result.trim();
 
-    if (/^\d+$/.test(curr) && /^\(.*\)$/.test(next)) {
-      merged.push(curr + " " + next);
-      i++;
-      continue;
-    }
-
-    merged.push(curr);
-  }
-
-  return merged;
+  return result;
 }
 
 
