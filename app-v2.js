@@ -773,30 +773,16 @@ function splitIngredients(line) {
   return parts.filter(p => p.length > 0);
 }
 
-// ------------------------------------------------------
-// NORMALIZE OCR TEXT
-// ------------------------------------------------------
 function normalizeOCR(text) {
   // ------------------------------------------------------------
   // 1. FORCE LINE BREAKS INTO RAW OCR BLOBS
   // ------------------------------------------------------------
-  // Break between lowercase → uppercase (OCR merges sentences)
-  text = text.replace(/([a-z])([A-Z])/g, "$1\n$2");
-
-  // Break after punctuation
-  text = text.replace(/([.!?])\s+/g, "$1\n");
-
-  // Break between letters and numbers
-  text = text.replace(/([a-zA-Z])(\d)/g, "$1\n$2");
-
-  // Break between numbers and letters
-  text = text.replace(/(\d)([A-Za-z])/g, "$1\n$2");
-
-  // Break between long runs of spaces (common in PDFs)
-  text = text.replace(/\s{3,}/g, "\n");
-
-  // Break between columns (PDF often inserts | or weird chars)
-  text = text.replace(/[|│¦]/g, "\n");
+  text = text.replace(/([a-z])([A-Z])/g, "$1\n$2");      // aA → a\nA
+  text = text.replace(/([.!?])\s+/g, "$1\n");            // punctuation → newline
+  text = text.replace(/([A-Za-z])(\d)/g, "$1\n$2");      // A1 → A\n1
+  text = text.replace(/(\d)([A-Za-z])/g, "$1\n$2");      // 1A → 1\nA
+  text = text.replace(/\s{3,}/g, "\n");                  // long spaces → newline
+  text = text.replace(/\|/g, "\n");                      // ASCII pipe only
 
   // ------------------------------------------------------------
   // 2. BASIC CLEANUP
@@ -811,45 +797,30 @@ function normalizeOCR(text) {
     .filter(l => l.length > 0);
 
   // ------------------------------------------------------------
-  // 3. REMOVE GARBAGE LINES
+  // 3. REMOVE GENERIC GARBAGE LINES
   // ------------------------------------------------------------
-  const garbage = [
-    /^=+$/, /^-+$/, /^[~`]+$/,
-    /^[\)\(]+$/, /^[\|
+  const garbagePatterns = [
+    /^=+$/, /^-+$/, /^[~`]+$/,          // pure symbols
+    /^[()]+$/, /^[
 
 \[\]
 
-]+$/,
-    /^[A-Z\s]{6,}$/,                 // ALL CAPS headers
-    /^\d{1,4}$/,                     // page numbers
-    /^page\s*\d+/i,
-    /^\d+\s*of\s*\d+/i,
-    /^continued on next page/i,
-    /three guys from miami cook cuban/i,
-    /tres leches cake \(continuation\)/i,
-    /^ingredients$/i,
-    /^directions$/i,
-    /^instructions$/i,
-    /^method$/i,
-    /^notes$/i,
-    /^tips$/i,
-    /^desserts$/i,
-    /^cake$/i,
-    /^syrup$/i,
-    /^frosting$/i,
-    /^topping$/i,
-    /^filling$/i
+]+$/,             // brackets only
+    /^\d{1,4}$/,                         // standalone numbers
+    /^page\s*\d+/i,                      // Page 12
+    /^\d+\s*of\s*\d+/i,                  // 3 of 10
+    /^[A-Z\s]{6,}$/                      // ALL CAPS headers
   ];
 
-  lines = lines.filter(l => !garbage.some(g => g.test(l)));
+  lines = lines.filter(l => !garbagePatterns.some(p => p.test(l)));
 
   // ------------------------------------------------------------
-  // 4. REMOVE OCR ARTIFACTS (your = ), fh =, p—— SN =, etc.)
+  // 4. REMOVE OCR ARTIFACTS (generic)
   // ------------------------------------------------------------
   lines = lines.filter(l =>
-    !/^[=~\-_|]{1,10}$/.test(l) &&
-    !/^[=~\-_|]{1,10}\s*[=~\-_|]{1,10}$/.test(l) &&
-    !/^[A-Za-z]{1,2}\s*[=~\-]{1,5}$/.test(l)
+    !/^[=~\-_]{1,10}$/.test(l) &&
+    !/^[=~\-_]{1,10}\s*[=~\-_]{1,10}$/.test(l) &&
+    !/^[A-Za-z]{1,2}\s*[=~\-_]{1,5}$/.test(l)
   );
 
   // ------------------------------------------------------------
@@ -860,8 +831,7 @@ function normalizeOCR(text) {
     const curr = lines[i];
     const next = lines[i + 1] || "";
 
-    // Example: "2" + "(14-ounce) can sweetened condensed milk"
-    if (/^\d+$/.test(curr) && /^\(.*\)/.test(next)) {
+    if (/^\d+$/.test(curr) && /^\(.*\)$/.test(next)) {
       merged.push(curr + " " + next);
       i++;
       continue;
@@ -872,6 +842,7 @@ function normalizeOCR(text) {
 
   return merged;
 }
+
 
 // ------------------------------------------------------
 // WRAPPER
