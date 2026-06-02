@@ -336,29 +336,49 @@ function classifyLine_v30(line) {
 /* ------------------------------------------------------------
 IMPORTER
    ------------------------------------------------------------ */
-function processRecipePipeline_v30(rawText, name, category) {
+function processRecipePipeline_v51(rawText, name, category) {
+  // 1. Normalize OCR/PDF text
   let lines = normalizeOCR(rawText);
 
-  // Remove junk
+  // 2. Remove obvious junk
   const junkPatterns = [
     /^\s*page\b/i,
-    /^\s*\d+\s*$/,
+    /^\s*\d+\s*$/, 
     /copyright/i,
     /all rights reserved/i
   ];
   lines = lines.filter(l => !junkPatterns.some(p => p.test(l)));
 
-  // Normalize units + fractions
+  // 3. Normalize units + fractions
   lines = lines.map(l => normalizeUnits(normalizeFractions(l)));
 
-  // Bulletproof header normalization
+  // 4. Bulletproof header normalization
   const normalizeHeader = (str) =>
     str
       .toLowerCase()
       .normalize("NFKD")
-      .replace(/[\u200B-\u200D\uFEFF]/g, "")
-      .replace(/[^a-z]/g, "");
+      .replace(/[\u200B-\u200D\uFEFF]/g, "") // zero-width chars
+      .replace(/[^a-z]/g, "");               // strip punctuation/spaces
 
+  // 5. Ingredient-like line detection (generic)
+  const isIngredientLine = (line) => {
+    const lower = line.toLowerCase();
+    return (
+      /^\d/.test(lower) || // starts with number
+      /\b(cup|cups|teaspoon|tablespoon|tsp|tbsp|ounce|oz|can|pint|quart|ml|g|kg)\b/.test(lower)
+    );
+  };
+
+  // 6. Direction-like line detection (generic)
+  const isDirectionLine = (line) => {
+    const lower = line.toLowerCase();
+    return (
+      /^\d+[\.\)]/.test(lower) || // numbered step
+      /\b(preheat|bake|mix|stir|whisk|beat|pour|cook|simmer|boil|fold|cool|invert|pierce)\b/.test(lower)
+    );
+  };
+
+  // 7. Section routing
   let section = "narrative";
   let narrative = [];
   let ingredients = [];
@@ -366,16 +386,17 @@ function processRecipePipeline_v30(rawText, name, category) {
 
   for (let line of lines) {
     const header = normalizeHeader(line);
+    const lower = line.toLowerCase().trim();
 
-    // Section switching
+    // --- SECTION SWITCHING ---
     if (header === "ingredients") {
       section = "ingredients";
       continue;
     }
 
-    if (header === "directions" || /^\d+[\.\)]/.test(line.trim())) {
+    if (header === "directions") {
       section = "directions";
-      // keep numbered steps
+      continue;
     }
 
     if (header === "variations" || header === "continuation") {
@@ -383,7 +404,20 @@ function processRecipePipeline_v30(rawText, name, category) {
       continue;
     }
 
-    // Routing
+    // --- COLUMN‑AGNOSTIC OVERRIDES ---
+    // ⭐ Ingredient-like lines ALWAYS go to ingredients
+    if (isIngredientLine(line)) {
+      ingredients.push(line);
+      continue;
+    }
+
+    // ⭐ Direction-like lines ALWAYS go to directions
+    if (isDirectionLine(line)) {
+      directions.push(line);
+      continue;
+    }
+
+    // --- ROUTING BASED ON SECTION ---
     if (section === "ingredients") {
       if (line.trim()) ingredients.push(line);
       continue;
@@ -394,10 +428,11 @@ function processRecipePipeline_v30(rawText, name, category) {
       continue;
     }
 
+    // Default: narrative
     if (line.trim()) narrative.push(line);
   }
 
-  // Clean direction numbering
+  // 8. Clean direction numbering
   directions = directions.map(d =>
     d.replace(/^\d+[:.)-]*\s*/, "").trim()
   );
