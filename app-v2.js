@@ -339,7 +339,7 @@ IMPORTER
 /* ------------------------------------------------------------
 IMPORTER (v51 — Clean Rewrite)
 ------------------------------------------------------------ */
-function processRecipePipeline(rawText, name, category) {
+function processRecipePipeline_v51(rawText, name, category) {
   // Normalize OCR/PDF text into lines
   let lines = normalizeOCR(rawText);
 
@@ -824,9 +824,12 @@ function normalizeOCR(text) {
 // ------------------------------------------------------
 // WRAPPER
 // ------------------------------------------------------
+const Active_Pipeline = processRecipePipeline_v51;
+
 function processRecipePipeline(rawText, name, category) {
-  return processRecipePipeline(rawText, name, category);
+  return Active_Pipeline(rawText, name, category);
 }
+
 
 // ------------------------------------------------------
 // HANDLE IMPORTED TEXT → SAVE TO FIRESTORE
