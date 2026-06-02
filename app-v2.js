@@ -777,6 +777,30 @@ function splitIngredients(line) {
 // NORMALIZE OCR TEXT
 // ------------------------------------------------------
 function normalizeOCR(text) {
+  // ------------------------------------------------------------
+  // 1. FORCE LINE BREAKS INTO RAW OCR BLOBS
+  // ------------------------------------------------------------
+  // Break between lowercase → uppercase (OCR merges sentences)
+  text = text.replace(/([a-z])([A-Z])/g, "$1\n$2");
+
+  // Break after punctuation
+  text = text.replace(/([.!?])\s+/g, "$1\n");
+
+  // Break between letters and numbers
+  text = text.replace(/([a-zA-Z])(\d)/g, "$1\n$2");
+
+  // Break between numbers and letters
+  text = text.replace(/(\d)([A-Za-z])/g, "$1\n$2");
+
+  // Break between long runs of spaces (common in PDFs)
+  text = text.replace(/\s{3,}/g, "\n");
+
+  // Break between columns (PDF often inserts | or weird chars)
+  text = text.replace(/[|│¦]/g, "\n");
+
+  // ------------------------------------------------------------
+  // 2. BASIC CLEANUP
+  // ------------------------------------------------------------
   let lines = text
     .replace(/\r/g, "\n")
     .replace(/\u00A0/g, " ")
@@ -786,39 +810,67 @@ function normalizeOCR(text) {
     .map(l => l.trim())
     .filter(l => l.length > 0);
 
-  lines = lines.filter(l => !isGarbage(l));
+  // ------------------------------------------------------------
+  // 3. REMOVE GARBAGE LINES
+  // ------------------------------------------------------------
+  const garbage = [
+    /^=+$/, /^-+$/, /^[~`]+$/,
+    /^[\)\(]+$/, /^[\|
 
-  lines = lines.filter(l => {
-    const lower = l.toLowerCase();
-    return ![
-      "narrative",
-      "ingredients",
-      "directions",
-      "instructions",
-      "method",
-      "steps",
-      "notes",
-      "tips",
-      "variations",
-      "variation",
-      "desserts",
-      "cake",
-      "syrup",
-      "frosting",
-      "topping",
-      "filling"
-    ].includes(lower);
-  });
+\[\]
 
-  lines = lines.filter(l => {
-    return !( /^[A-Z\s]{6,}$/.test(l) && l.split(" ").length > 1 );
-  });
+]+$/,
+    /^[A-Z\s]{6,}$/,                 // ALL CAPS headers
+    /^\d{1,4}$/,                     // page numbers
+    /^page\s*\d+/i,
+    /^\d+\s*of\s*\d+/i,
+    /^continued on next page/i,
+    /three guys from miami cook cuban/i,
+    /tres leches cake \(continuation\)/i,
+    /^ingredients$/i,
+    /^directions$/i,
+    /^instructions$/i,
+    /^method$/i,
+    /^notes$/i,
+    /^tips$/i,
+    /^desserts$/i,
+    /^cake$/i,
+    /^syrup$/i,
+    /^frosting$/i,
+    /^topping$/i,
+    /^filling$/i
+  ];
 
-  lines = lines.filter(l => !/^\d{1,4}$/.test(l));
+  lines = lines.filter(l => !garbage.some(g => g.test(l)));
 
-  lines = mergeBrokenQuantities(lines);
+  // ------------------------------------------------------------
+  // 4. REMOVE OCR ARTIFACTS (your = ), fh =, p—— SN =, etc.)
+  // ------------------------------------------------------------
+  lines = lines.filter(l =>
+    !/^[=~\-_|]{1,10}$/.test(l) &&
+    !/^[=~\-_|]{1,10}\s*[=~\-_|]{1,10}$/.test(l) &&
+    !/^[A-Za-z]{1,2}\s*[=~\-]{1,5}$/.test(l)
+  );
 
-  return lines;
+  // ------------------------------------------------------------
+  // 5. MERGE BROKEN QUANTITY LINES
+  // ------------------------------------------------------------
+  const merged = [];
+  for (let i = 0; i < lines.length; i++) {
+    const curr = lines[i];
+    const next = lines[i + 1] || "";
+
+    // Example: "2" + "(14-ounce) can sweetened condensed milk"
+    if (/^\d+$/.test(curr) && /^\(.*\)/.test(next)) {
+      merged.push(curr + " " + next);
+      i++;
+      continue;
+    }
+
+    merged.push(curr);
+  }
+
+  return merged;
 }
 
 // ------------------------------------------------------
